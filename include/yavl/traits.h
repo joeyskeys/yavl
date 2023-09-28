@@ -1,6 +1,6 @@
 #pragma once
 
-namespace pavml
+namespace yavl
 {
 
 template <typename T>

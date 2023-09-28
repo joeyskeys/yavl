@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-namespace yavml
+namespace yavl
 {
 
 template <uint32_t N>

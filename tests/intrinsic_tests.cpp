@@ -2,10 +2,10 @@
 
 #include <catch2/catch_all.hpp>
 
-#include <yavml/intrin.h>
-#include <yavml/utils.h>
+#include <yavl/intrin.h>
+#include <yavl/utils.h>
 
-using namespace yavml;
+using namespace yavl;
 
 TEST_CASE("Macro tests", "utils") {
     REQUIRE(has_avx512f == false);
