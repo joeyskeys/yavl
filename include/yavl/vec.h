@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <stdint.h>
 
 #include <yavl/intrin.h>
@@ -43,6 +45,16 @@ namespace yavl
 #define YAVL_DEFINE_FRIEND_OP(OP, NAME)                                 \
     friend auto operator OP(const Scalar s, const Vec& v) {             \
         FRIEND_SCALAR_EXPRS(OP, NAME)                                   \
+    }
+
+#define YAVL_DEFINE_VEC_INDEX_OP                                        \
+    Scalar& operator [](const uint32_t i) {                             \
+        assert(i < Size);                                               \
+        return arr[i];                                                  \
+    }                                                                   \
+    const Scalar& operator [](const uint32_t i) const {                 \
+        assert(i < Size);                                               \
+        return arr[i];                                                  \
     }
 
 template <typename T, uint32_t N>
@@ -89,21 +101,23 @@ struct Vec {
     Vec(Vec&&) = default;
 
     // Operators
+    YAVL_DEFINE_VEC_INDEX_OP
+
 #define VEC_EXPRS(OP, NAME)                                             \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
-        tmp.arr[i] = arr[i] OP v.arr[i];                                \
+        tmp[i] = arr[i] OP v[i];                                        \
     return tmp;
 
 #define VEC_ASSIGN_EXPRS(OP, NAME)                                      \
     for (int i = 0; i < Size; ++i)                                      \
-        arr[i] OP##= v.arr[i];                                          \
+        arr[i] OP##= v[i];                                              \
     return *this;
 
 #define SCALAR_EXPRS(OP, NAME)                                          \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
-        tmp.arr[i] = arr[i] OP v;                                       \
+        tmp[i] = arr[i] OP v;                                           \
     return tmp;
 
 #define SCALAR_ASSIGN_EXPRS(OP, NAME)                                   \
@@ -114,7 +128,7 @@ struct Vec {
 #define FRIEND_SCALAR_EXPRS(OP, NAME)                                   \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
-        tmp.arr[i] = s OP v.arr[i];                                     \
+        tmp[i] = s OP v[i];                                             \
     return tmp;
 
     YAVL_DEFINE_OP(+,)
@@ -129,6 +143,68 @@ struct Vec {
 #undef SCALAR_EXPRS
 #undef SCALAR_ASSIGN_EXPRS
 #undef FRIEND_SCALAR_EXPRS
+
+    // Math
+    inline auto length_squared() const {
+        T sum{0};
+        for (auto& e : arr)
+            sum += e * e;
+        return sum;
+    }
+
+    inline auto length() const {
+        return std::sqrt(length_squared());
+    }
+
+    inline Vec& normalize() {
+        Scalar rcp = 1. / length();
+        for (auto& e : arr)
+            e *= rcp;
+    }
+
+    inline auto normalized() const {
+        Scalar rcp = 1. / length();
+        return *this * rcp;
+    }
+
+    inline auto abs() const {
+        Vec tmp;
+        for (int i = 0; i < Size; ++i)
+            tmp[i] = std::abs(arr[i]);
+        return tmp;
+    }
+
+    inline auto sum() const {
+        return std::accumulate(arr.begin(), arr.end(), Scalar{0});
+    }
+
+    inline auto square() const {
+        Vec tmp;
+        for (int i = 0; i < Size; ++i)
+            tmp[i] = arr[i] * arr[i];
+        return tmp;
+    }
+
+    inline auto sqrt() const {
+        Vec tmp;
+        for (int i = 0; i < Size; ++i)
+            tmp[i] = std::sqrt(arr[i]);
+        return tmp;
+    }
+
+    inline auto exp() const {
+        Vec tmp;
+        for (int i = 0; i < Size; ++i)
+            tmp[i] = std::exp(arr[i]);
+        return tmp;
+    }
+
+    inline auto pow(const Scalar beta) const {
+        Vec tmp;
+        for (int i = 0; i < N; ++i)
+            tmp[i] = std::pow(arr[i]);
+        return tmp;
+    }
 };
 
 }

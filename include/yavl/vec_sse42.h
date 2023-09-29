@@ -39,6 +39,8 @@ struct alignas(16) Vec<float, 4> {
     Vec(const __m128 val) : m(val) {}
 
     // Operators
+    YAVL_DEFINE_VEC_INDEX_OP
+    
 #define VEC_EXPRS(OP, NAME)                                             \
     return Vec(_mm_##NAME##_ps(m, v.m));
 
