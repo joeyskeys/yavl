@@ -20,6 +20,31 @@ namespace yavl
     using B = std::conditional_t<(N > 2), TYPE, empty_t>;               \
     using A = std::conditional_t<(N > 3), TYPE, empty_t>;
 
+#define YAVL_DEFINE_VEC_OP(OP, NAME)                                    \
+    auto operator OP(const Vec& v) const {                              \
+        VEC_EXPRS(OP, NAME)                                             \
+    }                                                                   \
+    auto operator OP##=(const Vec& v) {                                 \
+        VEC_ASSIGN_EXPRS(OP, NAME)                                      \
+    }
+
+#define YAVL_DEFINE_SCALAR_OP(OP, NAME)                                 \
+    auto operator OP(const Scalar v) const {                            \
+        SCALAR_EXPRS(OP, NAME)                                          \
+    }                                                                   \
+    auto operator OP##=(const Scalar v) {                               \
+        SCALAR_ASSIGN_EXPRS(OP, NAME)                                   \
+    }
+
+#define YAVL_DEFINE_OP(OP, NAME)                                        \
+    YAVL_DEFINE_VEC_OP(OP, NAME)                                        \
+    YAVL_DEFINE_SCALAR_OP(OP, NAME)
+
+#define YAVL_DEFINE_FRIEND_OP(OP, NAME)                                 \
+    friend auto operator OP(const Scalar s, const Vec& v) {             \
+        FRIEND_SCALAR_EXPRS(OP, NAME)                                   \
+    }
+
 template <typename T, uint32_t N>
 struct Vec {
     YAVL_VEC_ALIAS(T, N)
@@ -64,6 +89,46 @@ struct Vec {
     Vec(Vec&&) = default;
 
     // Operators
+#define VEC_EXPRS(OP, NAME)                                             \
+    Vec tmp;                                                            \
+    for (int i = 0; i < Size; ++i)                                      \
+        tmp.arr[i] = arr[i] OP v.arr[i];                                \
+    return tmp;
+
+#define VEC_ASSIGN_EXPRS(OP, NAME)                                      \
+    for (int i = 0; i < Size; ++i)                                      \
+        arr[i] OP##= v.arr[i];                                          \
+    return *this;
+
+#define SCALAR_EXPRS(OP, NAME)                                          \
+    Vec tmp;                                                            \
+    for (int i = 0; i < Size; ++i)                                      \
+        tmp.arr[i] = arr[i] OP v;                                       \
+    return tmp;
+
+#define SCALAR_ASSIGN_EXPRS(OP, NAME)                                   \
+    for (int i = 0; i < Size; ++i)                                      \
+        arr[i] OP##= v;                                                 \
+    return *this;
+
+#define FRIEND_SCALAR_EXPRS(OP, NAME)                                   \
+    Vec tmp;                                                            \
+    for (int i = 0; i < Size; ++i)                                      \
+        tmp.arr[i] = s OP v.arr[i];                                     \
+    return tmp;
+
+    YAVL_DEFINE_OP(+,)
+    YAVL_DEFINE_OP(-,)
+    YAVL_DEFINE_OP(*,)
+    YAVL_DEFINE_FRIEND_OP(*,)
+    YAVL_DEFINE_OP(/,)
+    YAVL_DEFINE_FRIEND_OP(/,)
+
+#undef VEC_EXPRS
+#undef VEC_ASSIGN_EXPRS
+#undef SCALAR_EXPRS
+#undef SCALAR_ASSIGN_EXPRS
+#undef FRIEND_SCALAR_EXPRS
 };
 
 }

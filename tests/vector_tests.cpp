@@ -23,4 +23,9 @@ TEST_CASE("Vector tests", "vector") {
 
     Vec<float, 4> v5{1};
     REQUIRE(v5.x == 1);
+
+    Vec<int, 4> v6{1, 2, 3, 4};
+    Vec<int, 4> v7{2, 3, 4, 5};
+    auto v8 = v6 + v7;
+    REQUIRE(v8.x == 3);
 }

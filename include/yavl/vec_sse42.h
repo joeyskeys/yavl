@@ -39,94 +39,38 @@ struct alignas(16) Vec<float, 4> {
     Vec(const __m128 val) : m(val) {}
 
     // Operators
-    auto operator +(const Vec& v) const {
-        return Vec(_mm_add_ps(m, v.m));
-    }
+#define VEC_EXPRS(OP, NAME)                                             \
+    return Vec(_mm_##NAME##_ps(m, v.m));
 
-    auto& operator +=(const Vec& v) {
-        m = _mm_add_ps(m, v.m);
-        return *this;
-    }
+#define VEC_ASSIGN_EXPRS(OP, NAME)                                      \
+    m = _mm_##NAME##_ps(m, v.m);                                        \
+    return *this;
 
-    auto operator +(const Scalar v) const {
-        auto vv = _mm_set1_ps(v);
-        return Vec(_mm_add_ps(m, vv));
-    }
+#define SCALAR_EXPRS(OP, NAME)                                          \
+    auto vv = _mm_set1_ps(v);                                           \
+    return Vec(_mm_##NAME##_ps(m, vv));
 
-    auto& operator +=(const Scalar v) {
-        auto vv = _mm_set1_ps(v);
-        m = _mm_add_ps(m, vv);
-        return *this;
-    }
+#define SCALAR_ASSIGN_EXPRS(OP, NAME)                                   \
+    auto vv = _mm_set1_ps(v);                                           \
+    m = _mm_##NAME##_ps(m, vv);                                         \
+    return *this;
 
-    auto operator -(const Vec& v) const {
-        return Vec(_mm_sub_ps(m, v.m));
-    }
+#define FRIEND_SCALAR_EXPRS(OP, NAME)                                   \
+    auto vv = _mm_set1_ps(s);                                           \
+    return Vec(_mm_##NAME##_ps(vv, v.m));
 
-    auto operator -=(const Vec& v) {
-        m = _mm_sub_ps(m, v.m);
-        return *this;
-    }
+    YAVL_DEFINE_OP(+, add)
+    YAVL_DEFINE_OP(-, sub)
+    YAVL_DEFINE_OP(*, mul)
+    YAVL_DEFINE_FRIEND_OP(*, mul)
+    YAVL_DEFINE_OP(/, div)
+    YAVL_DEFINE_FRIEND_OP(/, div)
 
-    auto operator -(const Scalar v) const {
-        auto vv = _mm_set1_ps(v);
-        return Vec(_mm_sub_ps(m, vv));
-    }
-
-    auto operator -=(const Scalar v) {
-        auto vv = _mm_set1_ps(v);
-        m = _mm_sub_ps(m, vv);
-        return *this;
-    }
-
-    auto operator *(const Vec& v) const {
-        return Vec(_mm_mul_ps(m, v.m));
-    }
-
-    auto operator *=(const Vec& v) {
-        m = _mm_mul_ps(m, v.m);
-        return *this;
-    }
-
-    auto operator *(const Scalar v) const {
-        auto vv = _mm_set1_ps(v);
-        return Vec(_mm_mul_ps(m, vv));
-    }
-
-    auto operator *=(const Scalar v) {
-        auto vv = _mm_set1_ps(v);
-        m = _mm_mul_ps(m, vv);
-        return *this;
-    }
-
-    friend auto operator *(const Scalar s, const Vec& v) {
-        return v * s;
-    }
-
-    auto operator /(const Vec& v) const {
-        return Vec(_mm_div_ps(m, v.m));
-    }
-
-    auto operator /=(const Vec& v) {
-        m = _mm_div_ps(m, v.m);
-        return *this;
-    }
-
-    auto operator /(const Scalar v) const {
-        auto vv = _mm_set1_ps(v);
-        return Vec(_mm_div_ps(m, vv));
-    }
-
-    auto operator /=(const Scalar v) {
-        auto vv = _mm_set1_ps(v);
-        m = _mm_div_ps(m, vv);
-        return *this;
-    }
-
-    friend auto operator /(const Scalar s, const Vec& v) {
-        auto vv = _mm_set1_ps(s);
-        return Vec(_mm_div_ps(vv, v.m));
-    }
+#undef VEC_EXPRS
+#undef VEC_ASSIGN_EXPRS
+#undef SCALAR_EXPRS
+#undef SCALAR_ASSING_EXPRS
+#undef FRIEND_SCALAR_EXPRS
 };
 
 }
