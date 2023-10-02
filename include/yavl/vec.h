@@ -24,18 +24,18 @@ namespace yavl
 
 #define YAVL_DEFINE_VEC_OP(OP, NAME)                                    \
     auto operator OP(const Vec& v) const {                              \
-        VEC_EXPRS(OP, NAME)                                             \
+        OP_VEC_EXPRS(OP, NAME)                                          \
     }                                                                   \
     auto operator OP##=(const Vec& v) {                                 \
-        VEC_ASSIGN_EXPRS(OP, NAME)                                      \
+        OP_VEC_ASSIGN_EXPRS(OP, NAME)                                   \
     }
 
 #define YAVL_DEFINE_SCALAR_OP(OP, NAME)                                 \
     auto operator OP(const Scalar v) const {                            \
-        SCALAR_EXPRS(OP, NAME)                                          \
+        OP_SCALAR_EXPRS(OP, NAME)                                       \
     }                                                                   \
     auto operator OP##=(const Scalar v) {                               \
-        SCALAR_ASSIGN_EXPRS(OP, NAME)                                   \
+        OP_SCALAR_ASSIGN_EXPRS(OP, NAME)                                \
     }
 
 #define YAVL_DEFINE_OP(OP, NAME)                                        \
@@ -44,7 +44,7 @@ namespace yavl
 
 #define YAVL_DEFINE_FRIEND_OP(OP, NAME)                                 \
     friend auto operator OP(const Scalar s, const Vec& v) {             \
-        FRIEND_SCALAR_EXPRS(OP, NAME)                                   \
+        OP_FRIEND_SCALAR_EXPRS(OP, NAME)                                \
     }
 
 #define YAVL_DEFINE_VEC_INDEX_OP                                        \
@@ -103,29 +103,29 @@ struct Vec {
     // Operators
     YAVL_DEFINE_VEC_INDEX_OP
 
-#define VEC_EXPRS(OP, NAME)                                             \
+#define OP_VEC_EXPRS(OP, NAME)                                          \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
         tmp[i] = arr[i] OP v[i];                                        \
     return tmp;
 
-#define VEC_ASSIGN_EXPRS(OP, NAME)                                      \
+#define OP_VEC_ASSIGN_EXPRS(OP, NAME)                                   \
     for (int i = 0; i < Size; ++i)                                      \
         arr[i] OP##= v[i];                                              \
     return *this;
 
-#define SCALAR_EXPRS(OP, NAME)                                          \
+#define OP_SCALAR_EXPRS(OP, NAME)                                       \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
         tmp[i] = arr[i] OP v;                                           \
     return tmp;
 
-#define SCALAR_ASSIGN_EXPRS(OP, NAME)                                   \
+#define OP_SCALAR_ASSIGN_EXPRS(OP, NAME)                                \
     for (int i = 0; i < Size; ++i)                                      \
         arr[i] OP##= v;                                                 \
     return *this;
 
-#define FRIEND_SCALAR_EXPRS(OP, NAME)                                   \
+#define OP_FRIEND_SCALAR_EXPRS(OP, NAME)                                \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
         tmp[i] = s OP v[i];                                             \
@@ -138,73 +138,165 @@ struct Vec {
     YAVL_DEFINE_OP(/,)
     YAVL_DEFINE_FRIEND_OP(/,)
 
-#undef VEC_EXPRS
-#undef VEC_ASSIGN_EXPRS
-#undef SCALAR_EXPRS
-#undef SCALAR_ASSIGN_EXPRS
-#undef FRIEND_SCALAR_EXPRS
+#undef OP_VEC_EXPRS
+#undef OP_VEC_ASSIGN_EXPRS
+#undef OP_SCALAR_EXPRS
+#undef OP_SCALAR_ASSIGN_EXPRS
+#undef OP_FRIEND_SCALAR_EXPRS
+
+    // Misc
+#define MISC_SHUFFLE_FUNC                                               \
+    template <typename ...Ts>                                           \
+    inline constexpr Vec shuffle(Ts... args) const {                    \
+        MISC_SHUFFLE_EXPRS                                              \
+    }
+
+#define MISC_SHUFFLE_EXPRS                                              \
+    {                                                                   \
+        static_assert(sizeof...(args) == Size);                         \
+        Vec tmp;                                                        \
+        ([&] <std::size_t... Is>(std::index_sequence<Is...>, auto&&... as) { \
+            auto impl = [&] <typename A>(std::size_t i, A&& a) {        \
+                tmp[i] = arr[static_cast<uint32_t>(a)];                 \
+            };                                                          \
+            (impl(Is, std::forward<decltype(as)>(as)), ...);            \
+        }                                                               \
+        (std::index_sequence_for<Ts...>{}, std::forward<Ts>(args)...)); \
+        return tmp;                                                     \
+    }
+
+#define YAVL_DEFINE_MISC_FUNCS                                          \
+    MISC_SHUFFLE_FUNC
+
+    YAVL_DEFINE_MISC_FUNCS
+
+#undef MISC_SHUFFLE_EXPRS
+
+    // Geometry
+#define GEO_DOT_FUNC                                                    \
+    inline Scalar dot(const Vec& b) {                                   \
+        return (*this * b).sum();                                       \
+    }
+
+#define YAVL_DEFINE_GEO_FUNCS                                           \
+    GEO_DOT_FUNC
+
+    YAVL_DEFINE_GEO_FUNCS
 
     // Math
-    inline auto length_squared() const {
-        T sum{0};
-        for (auto& e : arr)
-            sum += e * e;
-        return sum;
+#define MATH_LENGTH_SQUARED_FUNC                                        \
+    inline auto length_squared() const {                                \
+        return dot(*this);                                              \
     }
 
-    inline auto length() const {
-        return std::sqrt(length_squared());
+#define MATH_LENGTH_FUNC                                                \
+    inline auto length() const {                                        \
+        return std::sqrt(length_squared());                             \
     }
 
-    inline Vec& normalize() {
-        Scalar rcp = 1. / length();
-        for (auto& e : arr)
-            e *= rcp;
+#define MATH_NORMALIZE_FUNC                                             \
+    inline Vec& normalize() {                                           \
+        Scalar rcp = 1. / length();                                     \
+        *this *= rcp;                                                   \
+        return *this;                                                   \
     }
 
-    inline auto normalized() const {
-        Scalar rcp = 1. / length();
-        return *this * rcp;
+#define MATH_NORMALIZED_FUNC                                            \
+    inline auto normalized() const {                                    \
+        Scalar rcp = 1. / length();                                     \
+        return *this * rcp;                                             \
     }
 
-    inline auto abs() const {
-        Vec tmp;
-        for (int i = 0; i < Size; ++i)
-            tmp[i] = std::abs(arr[i]);
-        return tmp;
+#define MATH_ABS_FUNC                                                   \
+    inline auto abs() const {                                           \
+        MATH_ABS_EXPRS                                                  \
     }
 
-    inline auto sum() const {
-        return std::accumulate(arr.begin(), arr.end(), Scalar{0});
+#define MATH_ABS_EXPRS                                                  \
+    {                                                                   \
+        Vec tmp;                                                        \
+        for (int i = 0; i < Size; ++i)                                  \
+            tmp[i] = std::abs(arr[i]);                                  \
+        return tmp;                                                     \
     }
 
-    inline auto square() const {
-        Vec tmp;
-        for (int i = 0; i < Size; ++i)
-            tmp[i] = arr[i] * arr[i];
-        return tmp;
+#define MATH_SUM_FUNC                                                   \
+    inline auto sum() const {                                           \
+        MATH_SUM_EXPRS                                                  \
     }
 
-    inline auto sqrt() const {
-        Vec tmp;
-        for (int i = 0; i < Size; ++i)
-            tmp[i] = std::sqrt(arr[i]);
-        return tmp;
+#define MATH_SUM_EXPRS                                                  \
+    {                                                                   \
+        return std::accumulate(arr.begin(), arr.end(), Scalar{0});      \
     }
 
-    inline auto exp() const {
-        Vec tmp;
-        for (int i = 0; i < Size; ++i)
-            tmp[i] = std::exp(arr[i]);
-        return tmp;
+#define MATH_SQUARE_FUNC                                                \
+    inline auto square() const {                                        \
+        return *this * *this;                                           \
     }
 
-    inline auto pow(const Scalar beta) const {
-        Vec tmp;
-        for (int i = 0; i < N; ++i)
-            tmp[i] = std::pow(arr[i]);
-        return tmp;
+#define MATH_SQRT_FUNC                                                  \
+    inline auto sqrt() const {                                          \
+        MATH_SQRT_EXPRS                                                 \
     }
+
+#define MATH_SQRT_EXPRS                                                 \
+    {                                                                   \
+        Vec tmp;                                                        \
+        for (int i = 0; i < Size; ++i)                                  \
+            tmp[i] = std::sqrt(arr[i]);                                 \
+        return tmp;                                                     \
+    }
+
+#define MATH_EXP_FUNC                                                   \
+    inline auto exp() const {                                           \
+        MATH_EXP_EXPRS                                                  \
+    }
+
+#define MATH_EXP_EXPRS                                                  \
+    {                                                                   \
+        Vec tmp;                                                        \
+        for (int i = 0; i < Size; ++i)                                  \
+            tmp[i] = std::exp(arr[i]);                                  \
+        return tmp;                                                     \
+    }
+
+#define MATH_POW_FUNC                                                   \
+    inline auto pow(const Scalar beta) const {                          \
+        MATH_POW_EXPRS                                                  \
+    }
+
+#define MATH_POW_EXPRS                                                  \
+    {                                                                   \
+        Vec tmp;                                                        \
+        for (int i = 0; i < N; ++i)                                     \
+            tmp[i] = std::pow(arr[i]);                                  \
+        return tmp;                                                     \
+    }
+
+#define YAVL_DEFINE_MATH_FUNCS                                          \
+    MATH_LENGTH_SQUARED_FUNC                                            \
+    MATH_LENGTH_FUNC                                                    \
+    MATH_NORMALIZE_FUNC                                                 \
+    MATH_ABS_FUNC                                                       \
+    MATH_SUM_FUNC                                                       \
+    MATH_SQUARE_FUNC                                                    \
+    MATH_SQRT_FUNC                                                      \
+    MATH_EXP_FUNC                                                       \
+    MATH_POW_FUNC
+
+    YAVL_DEFINE_MATH_FUNCS
+
+#undef MATH_LENGTH_SQUARED_EXPRS
+#undef MATH_LENGTH_EXPRS
+#undef MATH_NORMALIZE_EXPRS
+#undef MATH_NORMALIZED_EXPRS
+#undef MATH_ABS_EXPRS
+#undef MATH_SUM_EXPRS
+#undef MATH_SQUARE_EXPRS
+#undef MATH_SQRT_EXPRS
+#undef MATH_EXP_EXPRS
+#undef MATH_POW_EXPRS
 };
 
 }

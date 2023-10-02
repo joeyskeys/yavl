@@ -28,4 +28,10 @@ TEST_CASE("Vector tests", "vector") {
     Vec<int, 4> v7{2, 3, 4, 5};
     auto v8 = v6 + v7;
     REQUIRE(v8.x == 3);
+
+    auto v9 = v7.shuffle(2, 3, 0 ,1);
+    REQUIRE(v9.x == 4);
+
+    auto v5_sum = v5.sum();
+    REQUIRE(v5_sum == 4);
 }

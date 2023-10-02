@@ -41,23 +41,23 @@ struct alignas(16) Vec<float, 4> {
     // Operators
     YAVL_DEFINE_VEC_INDEX_OP
     
-#define VEC_EXPRS(OP, NAME)                                             \
+#define OP_VEC_EXPRS(OP, NAME)                                          \
     return Vec(_mm_##NAME##_ps(m, v.m));
 
-#define VEC_ASSIGN_EXPRS(OP, NAME)                                      \
+#define OP_VEC_ASSIGN_EXPRS(OP, NAME)                                   \
     m = _mm_##NAME##_ps(m, v.m);                                        \
     return *this;
 
-#define SCALAR_EXPRS(OP, NAME)                                          \
+#define OP_SCALAR_EXPRS(OP, NAME)                                       \
     auto vv = _mm_set1_ps(v);                                           \
     return Vec(_mm_##NAME##_ps(m, vv));
 
-#define SCALAR_ASSIGN_EXPRS(OP, NAME)                                   \
+#define OP_SCALAR_ASSIGN_EXPRS(OP, NAME)                                \
     auto vv = _mm_set1_ps(v);                                           \
     m = _mm_##NAME##_ps(m, vv);                                         \
     return *this;
 
-#define FRIEND_SCALAR_EXPRS(OP, NAME)                                   \
+#define OP_FRIEND_SCALAR_EXPRS(OP, NAME)                                \
     auto vv = _mm_set1_ps(s);                                           \
     return Vec(_mm_##NAME##_ps(vv, v.m));
 
@@ -68,11 +68,33 @@ struct alignas(16) Vec<float, 4> {
     YAVL_DEFINE_OP(/, div)
     YAVL_DEFINE_FRIEND_OP(/, div)
 
-#undef VEC_EXPRS
-#undef VEC_ASSIGN_EXPRS
-#undef SCALAR_EXPRS
-#undef SCALAR_ASSING_EXPRS
-#undef FRIEND_SCALAR_EXPRS
+#undef OP_VEC_EXPRS
+#undef OP_VEC_ASSIGN_EXPRS
+#undef OP_SCALAR_EXPRS
+#undef OP_SCALAR_ASSING_EXPRS
+#undef OP_FRIEND_SCALAR_EXPRS
+
+
+//#if defined(YAVL_X86_AVX)
+
+#define MATH_ABS_EXPRS                                                  \
+    {                                                                   \
+        /* Bitwise not with -0.f get the 0x7fff mask, bitwise and set */\
+        /* the sign bit to zero hence abs for the floating point */     \
+        return _mm_andnot_ps(_mm_set1_ps(-0.f), m);                     \
+    }
+
+#define MATH_SUM_EXPRS                                                  \
+    {                                                                   \
+        auto t1 = _mm_hadd_ps(m, m);                                    \
+        auto t2 = _mm_hadd_ps(t1, t1);                                  \
+        return _mm_cvtss_f32(t2);                                       \
+    }
+
+#define MATH_SQRT_EXPRS                                                 \
+    {                                                                   \
+        return _mm_sqrt_ps(m);                                          \
+    }
 };
 
 }
