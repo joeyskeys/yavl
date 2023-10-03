@@ -4,6 +4,8 @@
 
 using namespace yavl;
 
+using Catch::Approx;
+
 TEST_CASE("Vector tests", "vector") {
     Vec<float, 4> v{1, 2, 3, 4};
     REQUIRE(v.x == 1);
@@ -34,4 +36,13 @@ TEST_CASE("Vector tests", "vector") {
 
     auto v5_sum = v5.sum();
     REQUIRE(v5_sum == 4);
+
+    Vec<float, 4> v10{1, -1, 1, -1};
+    auto v11 = v10.abs();
+    REQUIRE(v11.x == 1);
+    REQUIRE(v11.y == 1);
+
+    Vec<float, 4> v12{1}, v13{2};
+    auto v14 = v12.lerp(v12, 0.5);
+    REQUIRE(v14.x == Approx(1.5));
 }

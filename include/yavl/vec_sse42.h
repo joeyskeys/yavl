@@ -64,9 +64,7 @@ struct alignas(16) Vec<float, 4> {
     YAVL_DEFINE_OP(+, add)
     YAVL_DEFINE_OP(-, sub)
     YAVL_DEFINE_OP(*, mul)
-    YAVL_DEFINE_FRIEND_OP(*, mul)
     YAVL_DEFINE_OP(/, div)
-    YAVL_DEFINE_FRIEND_OP(/, div)
 
 #undef OP_VEC_EXPRS
 #undef OP_VEC_ASSIGN_EXPRS
@@ -74,14 +72,13 @@ struct alignas(16) Vec<float, 4> {
 #undef OP_SCALAR_ASSING_EXPRS
 #undef OP_FRIEND_SCALAR_EXPRS
 
-
-//#if defined(YAVL_X86_AVX)
+    YAVL_DEFINE_GEO_FUNCS
 
 #define MATH_ABS_EXPRS                                                  \
     {                                                                   \
         /* Bitwise not with -0.f get the 0x7fff mask, bitwise and set */\
         /* the sign bit to zero hence abs for the floating point */     \
-        return _mm_andnot_ps(_mm_set1_ps(-0.f), m);                     \
+        return Vec(_mm_andnot_ps(_mm_set1_ps(-0.f), m));                \
     }
 
 #define MATH_SUM_EXPRS                                                  \
@@ -93,8 +90,52 @@ struct alignas(16) Vec<float, 4> {
 
 #define MATH_SQRT_EXPRS                                                 \
     {                                                                   \
-        return _mm_sqrt_ps(m);                                          \
+        return Vec(_mm_sqrt_ps(m));                                     \
     }
+
+#define MATH_EXP_EXPRS                                                  \
+    {                                                                   \
+        /* To be impl */                                                \
+        return Vec(0);                                                  \
+    }
+
+#define MATH_POW_EXPRS                                                  \
+    {                                                                   \
+        /* To be impl */                                                \
+        return Vec(0);                                                  \
+    }
+
+#if defined(YAVL_X86_FMA)
+#define MULADD(RET, A, B, C) RET = _mm_fmadd_ps(A, B, C)
+#else
+#define MULADD(RET, A, B, C) auto tmul = _mm_mul_ps(A, B), RET = _mm_add_ps(tmul, C)
+#endif
+
+#define MATH_LERP_SCALAR_EXPRS                                          \
+    {                                                                   \
+        auto vomt = _mm_set1_ps(1 - t);                                 \
+        auto vt = _mm_set1_ps(t);                                       \
+        auto t1 = _mm_mul_ps(b.m, vt);                                  \
+        MULADD(auto ret, vomt, m, t1);                                  \
+        return Vec(ret);                                                \
+    }
+
+#define MATH_LERP_VEC_EXPRS                                             \
+    {                                                                   \
+        Vec vomt = 1 - t;                                               \
+        auto t1 = _mm_mul_ps(b.m, t.m);                                 \
+        MULADD(auto ret, vomt.m, m, t1);                                \
+        return Vec(ret);                                                \
+    }
+
+    YAVL_DEFINE_MATH_FUNCS
+
+#undef MATH_ABS_EXPRS
+#undef MATH_SUM_EXPRS
+#undef MATH_SQRT_EXPRS
+#undef MATH_EXP_EXPRS
+#undef MATH_POW_EXPRS
+#undef MATH_LERP_EXPRS
 };
 
 }

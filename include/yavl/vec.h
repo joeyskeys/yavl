@@ -38,14 +38,15 @@ namespace yavl
         OP_SCALAR_ASSIGN_EXPRS(OP, NAME)                                \
     }
 
-#define YAVL_DEFINE_OP(OP, NAME)                                        \
-    YAVL_DEFINE_VEC_OP(OP, NAME)                                        \
-    YAVL_DEFINE_SCALAR_OP(OP, NAME)
-
 #define YAVL_DEFINE_FRIEND_OP(OP, NAME)                                 \
     friend auto operator OP(const Scalar s, const Vec& v) {             \
         OP_FRIEND_SCALAR_EXPRS(OP, NAME)                                \
     }
+
+#define YAVL_DEFINE_OP(OP, NAME)                                        \
+    YAVL_DEFINE_VEC_OP(OP, NAME)                                        \
+    YAVL_DEFINE_SCALAR_OP(OP, NAME)                                     \
+    YAVL_DEFINE_FRIEND_OP(OP, NAME)
 
 #define YAVL_DEFINE_VEC_INDEX_OP                                        \
     Scalar& operator [](const uint32_t i) {                             \
@@ -134,9 +135,7 @@ struct Vec {
     YAVL_DEFINE_OP(+,)
     YAVL_DEFINE_OP(-,)
     YAVL_DEFINE_OP(*,)
-    YAVL_DEFINE_FRIEND_OP(*,)
     YAVL_DEFINE_OP(/,)
-    YAVL_DEFINE_FRIEND_OP(/,)
 
 #undef OP_VEC_EXPRS
 #undef OP_VEC_ASSIGN_EXPRS
@@ -174,8 +173,8 @@ struct Vec {
 
     // Geometry
 #define GEO_DOT_FUNC                                                    \
-    inline Scalar dot(const Vec& b) {                                   \
-        return (*this * b).sum();                                       \
+    inline Scalar dot(const Vec& b) const {                             \
+        return this->operator*(b).sum();                                \
     }
 
 #define YAVL_DEFINE_GEO_FUNCS                                           \
@@ -221,7 +220,7 @@ struct Vec {
     }
 
 #define MATH_SUM_FUNC                                                   \
-    inline auto sum() const {                                           \
+    inline Scalar sum() const {                                         \
         MATH_SUM_EXPRS                                                  \
     }
 
@@ -274,6 +273,21 @@ struct Vec {
         return tmp;                                                     \
     }
 
+#define MATH_LERP_FUNC                                                  \
+    inline auto lerp(const Vec& b, const Scalar t) const {              \
+        MATH_LERP_SCALAR_EXPRS                                          \
+    }                                                                   \
+    inline auto lerp(const Vec& b, const Vec& t) const {                \
+        MATH_LERP_VEC_EXPRS                                             \
+    }
+
+#define MATH_LERP_SCALAR_EXPRS                                          \
+    {                                                                   \
+        return this->operator*(1 - t) + b * t;                          \
+    }
+
+#define MATH_LERP_VEC_EXPRS MATH_LERP_SCALAR_EXPRS
+
 #define YAVL_DEFINE_MATH_FUNCS                                          \
     MATH_LENGTH_SQUARED_FUNC                                            \
     MATH_LENGTH_FUNC                                                    \
@@ -283,7 +297,8 @@ struct Vec {
     MATH_SQUARE_FUNC                                                    \
     MATH_SQRT_FUNC                                                      \
     MATH_EXP_FUNC                                                       \
-    MATH_POW_FUNC
+    MATH_POW_FUNC                                                       \
+    MATH_LERP_FUNC
 
     YAVL_DEFINE_MATH_FUNCS
 
@@ -297,6 +312,8 @@ struct Vec {
 #undef MATH_SQRT_EXPRS
 #undef MATH_EXP_EXPRS
 #undef MATH_POW_EXPRS
+#undef MATH_LERP_SCALAR_EXPRS
+#undef MATH_LERP_VEC_EXPRS
 };
 
 }
