@@ -72,7 +72,14 @@ struct alignas(16) Vec<float, 4> {
 #undef OP_SCALAR_ASSING_EXPRS
 #undef OP_FRIEND_SCALAR_EXPRS
 
+#define GEO_DOT_EXPRS                                                   \
+    {                                                                   \
+        return _mm_cvtss_f32(_mm_dp_ps(m, b.m, 0b11110001));            \
+    }
+
     YAVL_DEFINE_GEO_FUNCS
+
+#undef GEO_DOT_EXPRS
 
 #define MATH_ABS_EXPRS                                                  \
     {                                                                   \
@@ -86,6 +93,11 @@ struct alignas(16) Vec<float, 4> {
         auto t1 = _mm_hadd_ps(m, m);                                    \
         auto t2 = _mm_hadd_ps(t1, t1);                                  \
         return _mm_cvtss_f32(t2);                                       \
+    }
+
+#define MATH_RCP_EXPRS                                                  \
+    {                                                                   \
+        
     }
 
 #define MATH_SQRT_EXPRS                                                 \

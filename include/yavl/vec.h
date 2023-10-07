@@ -174,6 +174,11 @@ struct Vec {
     // Geometry
 #define GEO_DOT_FUNC                                                    \
     inline Scalar dot(const Vec& b) const {                             \
+        GEO_DOT_EXPRS                                                   \
+    }
+
+#define GEO_DOT_EXPRS                                                   \
+    {                                                                   \
         return this->operator*(b).sum();                                \
     }
 
@@ -234,6 +239,15 @@ struct Vec {
         return *this * *this;                                           \
     }
 
+#define MATH_RCP_FUNC                                                   \
+    inline auto rcp() const {                                           \
+        MATH_RCP_EXPRS                                                  \
+    }
+#define MATH_RCP_EXPRS                                                  \
+    {                                                                   \
+        return Vec(1 / *this);                                          \
+    }
+
 #define MATH_SQRT_FUNC                                                  \
     inline auto sqrt() const {                                          \
         MATH_SQRT_EXPRS                                                 \
@@ -245,6 +259,16 @@ struct Vec {
         for (int i = 0; i < Size; ++i)                                  \
             tmp[i] = std::sqrt(arr[i]);                                 \
         return tmp;                                                     \
+    }
+
+#define MATH_RSQRT_FUNC                                                 \
+    inline auto sqrt() const {                                          \
+        MATH_RSQRT_EXPRS                                                \
+    }
+
+#define MATH_RSQRT_EXPRS                                                \
+    {                                                                   \
+        return 1. / length();                                           \
     }
 
 #define MATH_EXP_FUNC                                                   \
@@ -295,7 +319,9 @@ struct Vec {
     MATH_ABS_FUNC                                                       \
     MATH_SUM_FUNC                                                       \
     MATH_SQUARE_FUNC                                                    \
+    MATH_RCP_FUNC                                                       \
     MATH_SQRT_FUNC                                                      \
+    MATH_RSQRT_FUNC                                                     \
     MATH_EXP_FUNC                                                       \
     MATH_POW_FUNC                                                       \
     MATH_LERP_FUNC
