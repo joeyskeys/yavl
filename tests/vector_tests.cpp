@@ -43,6 +43,6 @@ TEST_CASE("Vector tests", "vector") {
     REQUIRE(v11.y == 1);
 
     Vec<float, 4> v12{1}, v13{2};
-    auto v14 = v12.lerp(v12, 0.5);
+    auto v14 = v12.lerp(v13, 0.5);
     REQUIRE(v14.x == Approx(1.5));
 }
