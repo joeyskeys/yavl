@@ -247,6 +247,8 @@ struct Vec {
         return tmp;                                                     \
     }
 
+/*
+// Put these functions into a seperated file
 #define MATH_EXP_FUNC                                                   \
     inline auto exp() const {                                           \
         MATH_EXP_EXPRS                                                  \
@@ -272,6 +274,7 @@ struct Vec {
             tmp[i] = std::pow(arr[i]);                                  \
         return tmp;                                                     \
     }
+*/
 
 #define MATH_LERP_FUNC                                                  \
     inline auto lerp(const Vec& b, const Scalar t) const {              \
@@ -296,8 +299,6 @@ struct Vec {
     MATH_SUM_FUNC                                                       \
     MATH_SQUARE_FUNC                                                    \
     MATH_SQRT_FUNC                                                      \
-    MATH_EXP_FUNC                                                       \
-    MATH_POW_FUNC                                                       \
     MATH_LERP_FUNC
 
     YAVL_DEFINE_MATH_FUNCS
@@ -310,8 +311,6 @@ struct Vec {
 #undef MATH_SUM_EXPRS
 #undef MATH_SQUARE_EXPRS
 #undef MATH_SQRT_EXPRS
-#undef MATH_EXP_EXPRS
-#undef MATH_POW_EXPRS
 #undef MATH_LERP_SCALAR_EXPRS
 #undef MATH_LERP_VEC_EXPRS
 };

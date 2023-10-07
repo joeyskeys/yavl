@@ -93,18 +93,6 @@ struct alignas(16) Vec<float, 4> {
         return Vec(_mm_sqrt_ps(m));                                     \
     }
 
-#define MATH_EXP_EXPRS                                                  \
-    {                                                                   \
-        /* To be impl */                                                \
-        return Vec(0);                                                  \
-    }
-
-#define MATH_POW_EXPRS                                                  \
-    {                                                                   \
-        /* To be impl */                                                \
-        return Vec(0);                                                  \
-    }
-
 #if defined(YAVL_X86_FMA)
 #define MULADD(RET, A, B, C) RET = _mm_fmadd_ps(A, B, C)
 #else
