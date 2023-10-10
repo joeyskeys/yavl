@@ -22,31 +22,38 @@ namespace yavl
     using B = std::conditional_t<(N > 2), TYPE, empty_t>;               \
     using A = std::conditional_t<(N > 3), TYPE, empty_t>;
 
-#define YAVL_DEFINE_VEC_OP(OP, NAME)                                    \
+#define YAVL_DEFINE_VEC_OP(OP, NAME, INTRIN_TYPE)                       \
     auto operator OP(const Vec& v) const {                              \
-        OP_VEC_EXPRS(OP, NAME)                                          \
+        OP_VEC_EXPRS(OP, NAME, INTRIN_TYPE)                             \
     }                                                                   \
     auto operator OP##=(const Vec& v) {                                 \
-        OP_VEC_ASSIGN_EXPRS(OP, NAME)                                   \
+        OP_VEC_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                      \
     }
 
-#define YAVL_DEFINE_SCALAR_OP(OP, NAME)                                 \
+#define YAVL_DEFINE_SCALAR_OP(OP, NAME, INTRIN_TYPE)                    \
     auto operator OP(const Scalar v) const {                            \
-        OP_SCALAR_EXPRS(OP, NAME)                                       \
+        OP_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                          \
     }                                                                   \
     auto operator OP##=(const Scalar v) {                               \
-        OP_SCALAR_ASSIGN_EXPRS(OP, NAME)                                \
+        OP_SCALAR_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                   \
     }
 
-#define YAVL_DEFINE_FRIEND_OP(OP, NAME)                                 \
+#define YAVL_DEFINE_FRIEND_OP(OP, NAME, INTRIN_TYPE)                    \
     friend auto operator OP(const Scalar s, const Vec& v) {             \
-        OP_FRIEND_SCALAR_EXPRS(OP, NAME)                                \
+        OP_FRIEND_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                   \
     }
 
-#define YAVL_DEFINE_OP(OP, NAME)                                        \
-    YAVL_DEFINE_VEC_OP(OP, NAME)                                        \
-    YAVL_DEFINE_SCALAR_OP(OP, NAME)                                     \
-    YAVL_DEFINE_FRIEND_OP(OP, NAME)
+#define YAVL_DEFINE_OP(OP, NAME, INTRIN_TYPE)                           \
+    YAVL_DEFINE_VEC_OP(OP, NAME, INTRIN_TYPE)                           \
+    YAVL_DEFINE_SCALAR_OP(OP, NAME, INTRIN_TYPE)                        \
+    YAVL_DEFINE_FRIEND_OP(OP, NAME, INTRIN_TYPE)
+
+#define YAVL_DEFINE_BASIC_ARITHMIC_OP(INTRIN_TYPE)                      \
+    YAVL_DEFINE_OP(+, add, INTRIN_TYPE)                                 \
+    YAVL_DEFINE_OP(-, sub, INTRIN_TYPE)                                 \
+    YAVL_DEFINE_OP(*, mul, INTRIN_TYPE)                                 \
+    YAVL_DEFINE_OP(/, div, INTRIN_TYPE)
+
 
 #define YAVL_DEFINE_VEC_INDEX_OP                                        \
     Scalar& operator [](const uint32_t i) {                             \
@@ -58,7 +65,7 @@ namespace yavl
         return arr[i];                                                  \
     }
 
-template <typename T, uint32_t N>
+template <typename T, uint32_t N, bool enable_vec=true>
 struct Vec {
     YAVL_VEC_ALIAS(T, N)
     YAVL_VEC_OPTIONAL_ALIAS(Scalar, N)
@@ -104,38 +111,35 @@ struct Vec {
     // Operators
     YAVL_DEFINE_VEC_INDEX_OP
 
-#define OP_VEC_EXPRS(OP, NAME)                                          \
+#define OP_VEC_EXPRS(OP, NAME, INTRIN_TYPE)                             \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
         tmp[i] = arr[i] OP v[i];                                        \
     return tmp;
 
-#define OP_VEC_ASSIGN_EXPRS(OP, NAME)                                   \
+#define OP_VEC_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                      \
     for (int i = 0; i < Size; ++i)                                      \
         arr[i] OP##= v[i];                                              \
     return *this;
 
-#define OP_SCALAR_EXPRS(OP, NAME)                                       \
+#define OP_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                          \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
         tmp[i] = arr[i] OP v;                                           \
     return tmp;
 
-#define OP_SCALAR_ASSIGN_EXPRS(OP, NAME)                                \
+#define OP_SCALAR_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                   \
     for (int i = 0; i < Size; ++i)                                      \
         arr[i] OP##= v;                                                 \
     return *this;
 
-#define OP_FRIEND_SCALAR_EXPRS(OP, NAME)                                \
+#define OP_FRIEND_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                   \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
         tmp[i] = s OP v[i];                                             \
     return tmp;
 
-    YAVL_DEFINE_OP(+,)
-    YAVL_DEFINE_OP(-,)
-    YAVL_DEFINE_OP(*,)
-    YAVL_DEFINE_OP(/,)
+    YAVL_DEFINE_BASIC_ARITHMIC_OP( )
 
 #undef OP_VEC_EXPRS
 #undef OP_VEC_ASSIGN_EXPRS
@@ -186,6 +190,8 @@ struct Vec {
     GEO_DOT_FUNC
 
     YAVL_DEFINE_GEO_FUNCS
+
+#undef GEO_DOT_EXPRS
 
     // Math
 #define MATH_LENGTH_SQUARED_FUNC                                        \
@@ -262,7 +268,7 @@ struct Vec {
     }
 
 #define MATH_RSQRT_FUNC                                                 \
-    inline auto sqrt() const {                                          \
+    inline auto rsqrt() const {                                         \
         MATH_RSQRT_EXPRS                                                \
     }
 
@@ -324,7 +330,7 @@ struct Vec {
     MATH_SQUARE_FUNC                                                    \
     MATH_RCP_FUNC                                                       \
     MATH_SQRT_FUNC                                                      \
-    MATH_RSQRT_FUNC                                                     \                                                       \
+    MATH_RSQRT_FUNC                                                     \
     MATH_LERP_FUNC
 
     YAVL_DEFINE_MATH_FUNCS
@@ -336,7 +342,9 @@ struct Vec {
 #undef MATH_ABS_EXPRS
 #undef MATH_SUM_EXPRS
 #undef MATH_SQUARE_EXPRS
+#undef MATH_RCP_EXPRS
 #undef MATH_SQRT_EXPRS
+#undef MATH_RSQRT_EXPRS
 #undef MATH_LERP_SCALAR_EXPRS
 #undef MATH_LERP_VEC_EXPRS
 };

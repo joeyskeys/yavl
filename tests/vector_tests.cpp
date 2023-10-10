@@ -45,4 +45,12 @@ TEST_CASE("Vector tests", "vector") {
     Vec<float, 4> v12{1}, v13{2};
     auto v14 = v12.lerp(v13, 0.5);
     REQUIRE(v14.x == Approx(1.5));
+
+    Vec<float, 4, false> v15{1};
+    REQUIRE(v14.vectorized == true);
+    REQUIRE(v15.vectorized == false);
+
+    Vec<float, 3> v16;
+    REQUIRE(v16.vectorizaed == true);
+    REQUIRE(sizeof(v16) == 16);
 }

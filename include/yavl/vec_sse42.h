@@ -71,13 +71,20 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
 #endif
 
     // Refine with one Newton-Raphson iteration
+    // Function for the iteration:
+    // X(n+1) = X(n) * (1.5 - 0.5 * a * X(n)^2)
+    // Here the implmentation uses:
+    //  1. t0 = 0.5 * X(n)
+    //  2. t1 = a * X(n)
+    // Finally r = t0 * (3 - t1 * X(n))
+    // Saves one muliplication.
     const __m128 c0 = _mm_set1_ps(.5f),
                  c1 = _mm_set1_ps(3.f);
 
     __m128 t0 = _mm_mul_ps(r, c0),
            t1 = _mm_mul_ps(r, m);
 #ifndef YAVL_x86_AVX512VL
-           ro = r;
+    __m128 ro = r;
     (void) ro;
 #endif
 
@@ -94,6 +101,38 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
 #endif
 #endif
 }
+
+#define YAVL_VECTORIZED_CTOR(INTRIN_TYPE, REGI_TYPE)                    \
+    Vec() : m(_mm_set1_##INTRIN_TYPE(0)) {}                             \
+    template <typename V>                                               \
+        requires std::default_initializable<V> && std::convertible_to<V, Scalar> \
+    Vec(V v) : m(_mm_set1_##INTRIN_TYPE(static_cast<Scalar>(v))) {}     \
+    template <typename ...Ts>                                           \
+        requires (std::default_initializable<Ts> && ...) && (std::convertible_to<Ts, Scalar> && ...) \
+    Vec(Ts... args) {                                                   \
+        m = _mm_setr_##INTRIN_TYPE(args...);                            \
+    }                                                                   \
+    Vec(const REGI_TYPE val) : m(val) {}
+
+#define OP_VEC_EXPRS(OP, NAME, INTRIN_TYPE)                             \
+    return Vec(_mm_##NAME##_##INTRIN_TYPE(m, v.m));
+
+#define OP_VEC_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                      \
+    m = _mm_##NAME##_##INTRIN_TYPE(m, v.m);                             \
+    return *this;
+
+#define OP_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                          \
+    auto vv = _mm_set1_##INTRIN_TYPE(v);                                \
+    return Vec(_mm_##NAME##_##INTRIN_TYPE(m, vv));
+
+#define OP_SCALAR_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                   \
+    auto vv = _mm_set1_##INTRIN_TYPE(v);                                \
+    m = _mm_##NAME##_##INTRIN_TYPE(m, vv);                           \
+    return *this;
+
+#define OP_FRIEND_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                   \
+    auto vv = _mm_set1_##INTRIN_TYPE(s);                                \
+    return Vec(_mm_##NAME##_##INTRIN_TYPE(vv, v.m));
 
 template <>
 struct alignas(16) Vec<float, 4> {
@@ -113,54 +152,11 @@ struct alignas(16) Vec<float, 4> {
         __m128 m;
     };
 
-    // Ctors
-    Vec() : m(_mm_set1_ps(0)) {}
-
-    template <typename V>
-        requires std::default_initializable<V> && std::convertible_to<V, Scalar>
-    Vec(V v) : m(_mm_set1_ps(static_cast<Scalar>(v))) {}
-
-    template <typename ...Ts>
-        requires (std::default_initializable<Ts> && ...) && (std::convertible_to<Ts, Scalar> && ...)
-    Vec(Ts... args) {
-            m = _mm_setr_ps(args...);
-    }
-
-    Vec(const __m128 val) : m(val) {}
+    YAVL_VECTORIZED_CTOR(ps, __m128)
 
     // Operators
     YAVL_DEFINE_VEC_INDEX_OP
-    
-#define OP_VEC_EXPRS(OP, NAME)                                          \
-    return Vec(_mm_##NAME##_ps(m, v.m));
-
-#define OP_VEC_ASSIGN_EXPRS(OP, NAME)                                   \
-    m = _mm_##NAME##_ps(m, v.m);                                        \
-    return *this;
-
-#define OP_SCALAR_EXPRS(OP, NAME)                                       \
-    auto vv = _mm_set1_ps(v);                                           \
-    return Vec(_mm_##NAME##_ps(m, vv));
-
-#define OP_SCALAR_ASSIGN_EXPRS(OP, NAME)                                \
-    auto vv = _mm_set1_ps(v);                                           \
-    m = _mm_##NAME##_ps(m, vv);                                         \
-    return *this;
-
-#define OP_FRIEND_SCALAR_EXPRS(OP, NAME)                                \
-    auto vv = _mm_set1_ps(s);                                           \
-    return Vec(_mm_##NAME##_ps(vv, v.m));
-
-    YAVL_DEFINE_OP(+, add)
-    YAVL_DEFINE_OP(-, sub)
-    YAVL_DEFINE_OP(*, mul)
-    YAVL_DEFINE_OP(/, div)
-
-#undef OP_VEC_EXPRS
-#undef OP_VEC_ASSIGN_EXPRS
-#undef OP_SCALAR_EXPRS
-#undef OP_SCALAR_ASSING_EXPRS
-#undef OP_FRIEND_SCALAR_EXPRS
+    YAVL_DEFINE_BASIC_ARITHMIC_OP(ps)
 
 #define GEO_DOT_EXPRS                                                   \
     {                                                                   \
@@ -187,7 +183,7 @@ struct alignas(16) Vec<float, 4> {
 
 #define MATH_RCP_EXPRS                                                  \
     {                                                                   \
-        return Vec(rcp_sse42_impl(m));
+        return Vec(rcp_sse42_impl(m));                                  \
     }
 
 #define MATH_SQRT_EXPRS                                                 \
@@ -197,7 +193,7 @@ struct alignas(16) Vec<float, 4> {
 
 #define MATH_RSQRT_EXPRS                                                \
     {                                                                   \
-        return Vec(rsqrt_sse52_impl(m));
+        return Vec(rsqrt_sse42_impl(m));                                \
     }
 
 #if defined(YAVL_X86_FMA)
@@ -232,5 +228,37 @@ struct alignas(16) Vec<float, 4> {
 #undef MATH_POW_EXPRS
 #undef MATH_LERP_EXPRS
 };
+
+template <>
+struct alignas(16) Vec<float, 3> {
+    YAVL_VEC_ALIAS(float, 3)
+
+    static constexpr bool vectorizaed = true;
+
+    union {
+        struct {
+            Scalar x, y, z;
+        };
+        struct {
+            Scalar r, g, b;
+        };
+
+        std::array<Scalar, Size> arr;
+        __m128 m;
+    };
+
+    // Ctors
+    YAVL_VECTORIZED_CTOR(ps, __m128)
+
+    // Operators
+    YAVL_DEFINE_VEC_INDEX_OP
+    YAVL_DEFINE_BASIC_ARITHMIC_OP(ps)
+};
+
+#undef OP_VEC_EXPRS
+#undef OP_VEC_ASSIGN_EXPRS
+#undef OP_SCALAR_EXPRS
+#undef OP_SCALAR_ASSING_EXPRS
+#undef OP_FRIEND_SCALAR_EXPRS
 
 }
