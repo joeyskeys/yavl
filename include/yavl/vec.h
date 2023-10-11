@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdint.h>
+#include <type_traits>
 
 #include <yavl/intrin.h>
 #include <yavl/traits.h>
@@ -11,9 +12,10 @@
 namespace yavl
 {
 
-#define YAVL_VEC_ALIAS(TYPE, N)                                         \
+#define YAVL_VEC_ALIAS(TYPE, N, INTRIN_N)                               \
     using Scalar = std::decay_t<TYPE>;                                  \
     static constexpr uint32_t Size = N;                                 \
+    static constexpr uint32_t IntrinSize = INTRIN_N;                    \
     static constexpr uint32_t BitSize = sizeof(Scalar) * N * 8;
 
 #define YAVL_VEC_OPTIONAL_ALIAS(TYPE, N)                                \
@@ -67,7 +69,7 @@ namespace yavl
 
 template <typename T, uint32_t N, bool enable_vec=true>
 struct Vec {
-    YAVL_VEC_ALIAS(T, N)
+    YAVL_VEC_ALIAS(T, N, N)
     YAVL_VEC_OPTIONAL_ALIAS(Scalar, N)
 
     static constexpr bool vectorized = false;

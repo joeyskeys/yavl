@@ -108,9 +108,15 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
         requires std::default_initializable<V> && std::convertible_to<V, Scalar> \
     Vec(V v) : m(_mm_set1_##INTRIN_TYPE(static_cast<Scalar>(v))) {}     \
     template <typename ...Ts>                                           \
-        requires (std::default_initializable<Ts> && ...) && (std::convertible_to<Ts, Scalar> && ...) \
+        requires (std::default_initializable<Ts> && ...) &&             \
+            (std::convertible_to<Ts, Scalar> && ...)                    \
     Vec(Ts... args) {                                                   \
-        m = _mm_setr_##INTRIN_TYPE(args...);                            \
+        if constexpr (sizeof...(Ts) == IntrinSize)                      \
+            m = _mm_setr_##INTRIN_TYPE(args...);                        \
+        else if constexpr (sizeof...(Ts) == IntrinSize - 1)             \
+            m = _mm_setr_##INTRIN_TYPE(args..., 0);                     \
+        else                                                            \
+            m = _mm_setr_##INTRIN_TYPE(0, 0, 0, 0);                     \
     }                                                                   \
     Vec(const REGI_TYPE val) : m(val) {}
 
@@ -134,51 +140,11 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
     auto vv = _mm_set1_##INTRIN_TYPE(s);                                \
     return Vec(_mm_##NAME##_##INTRIN_TYPE(vv, v.m));
 
-template <>
-struct alignas(16) Vec<float, 4> {
-    YAVL_VEC_ALIAS(float, 4)
-
-    static constexpr bool vectorized = true;
-
-    union {
-        struct {
-            Scalar x, y, z, w;
-        };
-        struct {
-            Scalar r, g, b, a;
-        };
-        
-        std::array<Scalar, Size> arr;
-        __m128 m;
-    };
-
-    YAVL_VECTORIZED_CTOR(ps, __m128)
-
-    // Operators
-    YAVL_DEFINE_VEC_INDEX_OP
-    YAVL_DEFINE_BASIC_ARITHMIC_OP(ps)
-
-#define GEO_DOT_EXPRS                                                   \
-    {                                                                   \
-        return _mm_cvtss_f32(_mm_dp_ps(m, b.m, 0b11110001));            \
-    }
-
-    YAVL_DEFINE_GEO_FUNCS
-
-#undef GEO_DOT_EXPRS
-
 #define MATH_ABS_EXPRS                                                  \
     {                                                                   \
         /* Bitwise not with -0.f get the 0x7fff mask, bitwise and set */\
         /* the sign bit to zero hence abs for the floating point */     \
         return Vec(_mm_andnot_ps(_mm_set1_ps(-0.f), m));                \
-    }
-
-#define MATH_SUM_EXPRS                                                  \
-    {                                                                   \
-        auto t1 = _mm_hadd_ps(m, m);                                    \
-        auto t2 = _mm_hadd_ps(t1, t1);                                  \
-        return _mm_cvtss_f32(t2);                                       \
     }
 
 #define MATH_RCP_EXPRS                                                  \
@@ -219,21 +185,59 @@ struct alignas(16) Vec<float, 4> {
         return Vec(ret);                                                \
     }
 
+template <>
+struct alignas(16) Vec<float, 4> {
+    YAVL_VEC_ALIAS(float, 4, 4)
+
+    static constexpr bool vectorized = true;
+
+    union {
+        struct {
+            Scalar x, y, z, w;
+        };
+        struct {
+            Scalar r, g, b, a;
+        };
+        
+        std::array<Scalar, Size> arr;
+        __m128 m;
+    };
+
+    // Ctors
+    YAVL_VECTORIZED_CTOR(ps, __m128)
+
+    // Operators
+    YAVL_DEFINE_VEC_INDEX_OP
+    YAVL_DEFINE_BASIC_ARITHMIC_OP(ps)
+
+    // Geo funcs
+#define GEO_DOT_EXPRS                                                   \
+    {                                                                   \
+        return _mm_cvtss_f32(_mm_dp_ps(m, b.m, 0b11110001));            \
+    }
+
+    YAVL_DEFINE_GEO_FUNCS
+
+#undef GEO_DOT_EXPRS
+
+    // Math funcs
+#define MATH_SUM_EXPRS                                                  \
+    {                                                                   \
+        auto t1 = _mm_hadd_ps(m, m);                                    \
+        auto t2 = _mm_hadd_ps(t1, t1);                                  \
+        return _mm_cvtss_f32(t2);                                       \
+    }
+
     YAVL_DEFINE_MATH_FUNCS
 
-#undef MATH_ABS_EXPRS
 #undef MATH_SUM_EXPRS
-#undef MATH_SQRT_EXPRS
-#undef MATH_EXP_EXPRS
-#undef MATH_POW_EXPRS
-#undef MATH_LERP_EXPRS
 };
 
 template <>
 struct alignas(16) Vec<float, 3> {
-    YAVL_VEC_ALIAS(float, 3)
+    YAVL_VEC_ALIAS(float, 3, 4)
 
-    static constexpr bool vectorizaed = true;
+    static constexpr bool vectorized = true;
 
     union {
         struct {
@@ -253,6 +257,29 @@ struct alignas(16) Vec<float, 3> {
     // Operators
     YAVL_DEFINE_VEC_INDEX_OP
     YAVL_DEFINE_BASIC_ARITHMIC_OP(ps)
+
+    // Geo funcs
+#define GEO_DOT_EXPRS                                                   \
+    {                                                                   \
+        return _mm_cvtss_f32(_mm_dp_ps(m, b.m, 0b01110001));            \
+    }
+
+    YAVL_DEFINE_GEO_FUNCS
+
+#undef GEO_DOT_EXPRS
+
+    // Math funcs
+
+    // Two simple addition is simpler than the intrinsic version
+    // TODO: do actual benchmark to find out if this is realy better
+#define MATH_SUM_EXPRS
+    {                                                                   \
+        return x + y + z;                                               \
+    }
+
+    YAVL_DEFINE_MATH_FUNCS
+
+#undef MATH_SUM_EXPRS
 };
 
 #undef OP_VEC_EXPRS
@@ -261,4 +288,10 @@ struct alignas(16) Vec<float, 3> {
 #undef OP_SCALAR_ASSING_EXPRS
 #undef OP_FRIEND_SCALAR_EXPRS
 
+#undef MATH_ABS_EXPRS
+#undef MATH_SQRT_EXPRS
+#undef MATH_EXP_EXPRS
+#undef MATH_POW_EXPRS
+#undef MATH_LERP_EXPRS
+#undef YAVL_X86_FMA
 }
