@@ -152,11 +152,13 @@ struct Vec {
     // Misc
 #define MISC_SHUFFLE_FUNC                                               \
     template <typename ...Ts>                                           \
+        requires (std::default_initializable<Ts> && ...) &&             \
+            (std::convertible_to<Ts, Scalar> && ...)                    \
     inline constexpr Vec shuffle(Ts... args) const {                    \
         MISC_SHUFFLE_EXPRS                                              \
     }
 
-#define MISC_SHUFFLE_EXPRS                                              \
+#define MISC_BASE_SHUFFLE_EXPRS                                              \
     {                                                                   \
         static_assert(sizeof...(args) == Size);                         \
         Vec tmp;                                                        \
@@ -169,6 +171,8 @@ struct Vec {
         (std::index_sequence_for<Ts...>{}, std::forward<Ts>(args)...)); \
         return tmp;                                                     \
     }
+
+#define MISC_SHUFFLE_EXPRS MISC_BASE_SHUFFLE_EXPRS
 
 #define YAVL_DEFINE_MISC_FUNCS                                          \
     MISC_SHUFFLE_FUNC

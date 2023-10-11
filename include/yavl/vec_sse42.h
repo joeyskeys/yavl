@@ -133,12 +133,33 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
 
 #define OP_SCALAR_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                   \
     auto vv = _mm_set1_##INTRIN_TYPE(v);                                \
-    m = _mm_##NAME##_##INTRIN_TYPE(m, vv);                           \
+    m = _mm_##NAME##_##INTRIN_TYPE(m, vv);                              \
     return *this;
 
 #define OP_FRIEND_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                   \
     auto vv = _mm_set1_##INTRIN_TYPE(s);                                \
     return Vec(_mm_##NAME##_##INTRIN_TYPE(vv, v.m));
+
+template <typename ...Ts>
+static inline __m128 shuffle_impl(const __m128 m, Ts ...args)
+{
+#if defined(YAVL_X86_AVX)
+    static_assert(sizeof...(args) > 2);
+    __m128i i;
+    if constexpr (sizeof...(args) == 4)
+        i = _mm_setr_epi32(args...);
+    else
+        i = _mm_setr_epi32(args..., 0);
+    return _mm_permutevar_ps(m, i);
+#else
+    MISC_BASE_SHUFFLE_EXPRS
+#endif
+}
+
+#define MISC_SHUFFLE_EXPRS                                              \
+    {                                                                   \
+        return Vec(shuffle_impl(m, args...));                           \
+    }
 
 #define MATH_ABS_EXPRS                                                  \
     {                                                                   \
@@ -164,8 +185,10 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
 
 #if defined(YAVL_X86_FMA)
 #define MULADD(RET, A, B, C) RET = _mm_fmadd_ps(A, B, C)
+#define MULSUB(RET, A, B, C) RET = _mm_fmsub_ps(A, B, C)
 #else
-#define MULADD(RET, A, B, C) auto tmul = _mm_mul_ps(A, B), RET = _mm_add_ps(tmul, C)
+#define MULADD(RET, A, B, C) RET = _mm_add_ps(_mm_mul_ps(A, B), C)
+#define MULSUB(RET, A, B, C) RET = _mm_sub_ps(_mm_mul_ps(A, B), C)
 #endif
 
 #define MATH_LERP_SCALAR_EXPRS                                          \
@@ -209,6 +232,18 @@ struct alignas(16) Vec<float, 4> {
     // Operators
     YAVL_DEFINE_VEC_INDEX_OP
     YAVL_DEFINE_BASIC_ARITHMIC_OP(ps)
+
+    // Misc funcs
+    template <int I0, int I1, int I2, int I3>
+    inline Vec shuffle() const {
+#if defined(YAVL_X86_AVX)
+        return Vec(_mm_permute_ps(m, _MM_SHUFFLE(I3, I2, I1, I0)));
+#else
+        return Vec(_mm_shuffle_ps(m, m, _MM_SHUFFLE(I3, I2, I1, I0)));
+#endif
+    }
+
+    YAVL_DEFINE_MISC_FUNCS
 
     // Geo funcs
 #define GEO_DOT_EXPRS                                                   \
@@ -258,6 +293,18 @@ struct alignas(16) Vec<float, 3> {
     YAVL_DEFINE_VEC_INDEX_OP
     YAVL_DEFINE_BASIC_ARITHMIC_OP(ps)
 
+    // Misc funcs
+    template <int I0, int I1, int I2>
+    inline Vec shuffle() const {
+#if defined(YAVL_X86_AVX)
+        return Vec(_mm_permute_ps(m, _MM_SHUFFLE(0, I2, I1, I0)));
+#else
+        return Vec(_mm_shuffle_ps(m, m, _MM_SHUFFLE(0, I2, I1, I0)));
+#endif
+    }
+
+    YAVL_DEFINE_MISC_FUNCS
+
     // Geo funcs
 #define GEO_DOT_EXPRS                                                   \
     {                                                                   \
@@ -268,11 +315,19 @@ struct alignas(16) Vec<float, 3> {
 
 #undef GEO_DOT_EXPRS
 
+    inline auto cross(const Vec& b) const {
+        auto t1 = shuffle<1, 2, 0>();
+        auto t2 = b.shuffle<2, 0, 1>();
+        auto t3 = shuffle<2, 0, 1>() * b.shuffle<1, 2, 0>();
+        MULSUB(auto ret, t1.m, t2.m, t3.m);
+        return Vec(ret);
+    }
+
     // Math funcs
 
     // Two simple addition is simpler than the intrinsic version
     // TODO: do actual benchmark to find out if this is realy better
-#define MATH_SUM_EXPRS
+#define MATH_SUM_EXPRS                                                  \
     {                                                                   \
         return x + y + z;                                               \
     }

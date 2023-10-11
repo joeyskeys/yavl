@@ -57,4 +57,9 @@ TEST_CASE("Vector tests", "vector") {
     Vec<float, 3> v17{1, 2, 3};
     Vec<float, 3> v18{2, 3, 4};
     REQUIRE(v17.dot(v18) == Approx(20));
+
+    auto v19 = v17.shuffle<1, 2, 0>();
+    REQUIRE(v19.x == Approx(2));
+    auto v20 = v17.cross(v18);
+    REQUIRE(v20.x == Approx(-1));
 }
