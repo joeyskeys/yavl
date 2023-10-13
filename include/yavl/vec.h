@@ -94,12 +94,12 @@ struct Vec {
     };
 
     // Ctors
-    Vec() {
+    constexpr Vec() {
         arr.fill(static_cast<T>(0));
     }
 
     template <typename ...Ts>
-    Vec(Ts... args) {
+    constexpr Vec(Ts... args) {
         static_assert(sizeof...(args) == 1 || sizeof...(args) == Size);
         if constexpr (sizeof...(args) == 1)
             arr.fill(static_cast<Scalar>(args)...);
@@ -154,7 +154,7 @@ struct Vec {
     template <typename ...Ts>                                           \
         requires (std::default_initializable<Ts> && ...) &&             \
             (std::convertible_to<Ts, Scalar> && ...)                    \
-    inline constexpr Vec shuffle(Ts... args) const {                    \
+    inline Vec shuffle(Ts... args) const {                    \
         MISC_SHUFFLE_EXPRS                                              \
     }
 

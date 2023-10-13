@@ -62,4 +62,8 @@ TEST_CASE("Vector tests", "vector") {
     REQUIRE(v19.x == Approx(2));
     auto v20 = v17.cross(v18);
     REQUIRE(v20.x == Approx(-1));
+
+    Vec<double, 2> v21{1, 2};
+    auto v22 = v21.shuffle<1, 0>();
+    REQUIRE(v22.x == 2);
 }

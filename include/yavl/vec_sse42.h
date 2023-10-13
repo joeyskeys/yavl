@@ -110,13 +110,12 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
     template <typename ...Ts>                                           \
         requires (std::default_initializable<Ts> && ...) &&             \
             (std::convertible_to<Ts, Scalar> && ...)                    \
-    Vec(Ts... args) {                                                   \
-        if constexpr (sizeof...(Ts) == IntrinSize)                      \
-            m = _mm_setr_##INTRIN_TYPE(args...);                        \
-        else if constexpr (sizeof...(Ts) == IntrinSize - 1)             \
+    constexpr Vec(Ts... args) {                                         \
+        static_assert(sizeof...(args) > 1);                             \
+        if constexpr (sizeof...(Ts) == IntrinSize - 1)                  \
             m = _mm_setr_##INTRIN_TYPE(args..., 0);                     \
         else                                                            \
-            m = _mm_setr_##INTRIN_TYPE(0, 0, 0, 0);                     \
+            m = _mm_setr_##INTRIN_TYPE(args...);                        \
     }                                                                   \
     Vec(const REGI_TYPE val) : m(val) {}
 
@@ -140,17 +139,26 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
     auto vv = _mm_set1_##INTRIN_TYPE(s);                                \
     return Vec(_mm_##NAME##_##INTRIN_TYPE(vv, v.m));
 
-template <typename ...Ts>
-static inline __m128 shuffle_impl(const __m128 m, Ts ...args)
+template <typename Vec, typename ...Ts>
+static inline Vec shuffle_impl(const Vec& v, Ts ...args)
 {
 #if defined(YAVL_X86_AVX)
     static_assert(sizeof...(args) > 2);
     __m128i i;
-    if constexpr (sizeof...(args) == 4)
-        i = _mm_setr_epi32(args...);
-    else
+    if constexpr (sizeof...(args) == 3)
         i = _mm_setr_epi32(args..., 0);
-    return _mm_permutevar_ps(m, i);
+    else
+        i = _mm_setr_epi64(args...);
+
+    if constexpr (std::is_floating_point_v<typename Vec::Scalar>) {
+        if constexpr (sizeof...(args) > 2)
+            return Vec(_mm_permutevar_ps(v.m, i));
+        else
+            return Vec(_mm_permutevar_pd(v.m, _mm_slli_epi64(i, 1)));
+    }
+    else {
+        return Vec(0);
+    }
 #else
     MISC_BASE_SHUFFLE_EXPRS
 #endif
@@ -158,7 +166,7 @@ static inline __m128 shuffle_impl(const __m128 m, Ts ...args)
 
 #define MISC_SHUFFLE_EXPRS                                              \
     {                                                                   \
-        return Vec(shuffle_impl(m, args...));                           \
+        return Vec(shuffle_impl<true>(m, args...));                           \
     }
 
 #define MATH_ABS_EXPRS                                                  \
@@ -243,7 +251,15 @@ struct alignas(16) Vec<float, 4> {
 #endif
     }
 
+#define MISC_SHUFFLE_AVX_EXPRS                                          \
+    {                                                                   \
+        __m128i i = _mm_setr_epi32(args...);                            \
+        return _mm_permutevar_ps(m, i);                                 \
+    }
+
     YAVL_DEFINE_MISC_FUNCS
+
+#undef MISC_SHUFFLE_AVX_EXPRS
 
     // Geo funcs
 #define GEO_DOT_EXPRS                                                   \
@@ -303,7 +319,15 @@ struct alignas(16) Vec<float, 3> {
 #endif
     }
 
+#define MISC_SHUFFLE_AVX_EXPRS                                          \
+    {                                                                   \
+        __m128i i = _mm_setr_epi32(args..., 0);                         \
+        return _mm_permutevar_ps(m, i);                                 \
+    }
+
     YAVL_DEFINE_MISC_FUNCS
+
+#undef MISC_SHUFFLE_AVX_EXPRS
 
     // Geo funcs
 #define GEO_DOT_EXPRS                                                   \
@@ -335,6 +359,90 @@ struct alignas(16) Vec<float, 3> {
     YAVL_DEFINE_MATH_FUNCS
 
 #undef MATH_SUM_EXPRS
+};
+
+template <>
+struct alignas(16) Vec<double, 2> {
+    YAVL_VEC_ALIAS(double, 2, 2)
+
+    static constexpr bool vectorized = true;
+
+    union {
+        struct {
+            Scalar x, y;
+        };
+        struct {
+            Scalar r, g;
+        };
+
+        std::array<Scalar, Size> arr;
+        __m128 m;
+    };
+
+    // Ctors
+    YAVL_VECTORIZED_CTOR(pd, __m128)
+
+    // Operators
+    YAVL_DEFINE_VEC_INDEX_OP
+    YAVL_DEFINE_BASIC_ARITHMIC_OP(pd)
+
+    // Misc funcs
+#if defined(YAVL_X86_AVX)
+#define SHUFFLE_PD(m, mask) _mm_permute_pd(m, mask)
+#else
+#define SHUFFLE_PD(m, mask) _mm_shuffle_pd(m, m, mask)
+#endif
+
+    template <int I0, int I1>
+    inline Vec shuffle() const {
+        return SHUFFLE_PD(m, (I1 << 1) | I0);
+    }
+
+#define MISC_SHUFFLE_AVX_EXPRS                                          \
+    {                                                                   \
+        __m128i i = _mm_setr_epi64(args...);                            \
+        return _mm_permutevar_pd(m, _mm_slli_epi(i, 1));                \
+    }
+
+    // Geo funcs
+#define GEO_DOT_EXPRS                                                   \
+    {                                                                   \
+        return _mm_cvtsd_f64(_mm_dp_pd(m, b.m, 0b00110001));            \
+    }
+
+    YAVL_DEFINE_GEO_FUNCS
+
+#undef GEO_DOT_EXPRS
+
+    inline auto cross(const Vec& b) const {
+        auto t1 = operator*(b.shuffle<1, 0>());
+        return t1[0] - t1[1];
+    }
+
+    // Math funcs
+#define MATH_SUM_EXPRS                                                  \
+    {                                                                   \
+        return x + y;                                                   \
+    }
+
+    YAVL_DEFINE_MATH_FUNCS
+
+#undef MATH_SUM_EXPRS
+};
+
+template <typename I>
+struct alignas(16) Vec<I, 4> {
+
+};
+
+template <typename I>
+struct alignas(16) Vec<I, 3> {
+
+};
+
+template <typename I>
+struct alignas(16) Vec<I, 2> {
+
 };
 
 #undef OP_VEC_EXPRS
