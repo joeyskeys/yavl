@@ -102,6 +102,10 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
 #endif
 }
 
+#define YAVL_VEC_ALIAS_VECTORIZED(TYPE, N, INTRIN_N)                    \
+    YAVL_VEC_ALIAS(TYPE, N, INTRIN_N)                                   \
+    static constexpr bool vectorized = true;
+
 #define YAVL_VECTORIZED_CTOR(INTRIN_TYPE, REGI_TYPE)                    \
     Vec() : m(_mm_set1_##INTRIN_TYPE(0)) {}                             \
     template <typename V>                                               \
@@ -218,9 +222,7 @@ static inline Vec shuffle_impl(const Vec& v, Ts ...args)
 
 template <>
 struct alignas(16) Vec<float, 4> {
-    YAVL_VEC_ALIAS(float, 4, 4)
-
-    static constexpr bool vectorized = true;
+    YAVL_VEC_ALIAS_VECTORIZED(float, 4, 4)
 
     union {
         struct {
@@ -286,9 +288,7 @@ struct alignas(16) Vec<float, 4> {
 
 template <>
 struct alignas(16) Vec<float, 3> {
-    YAVL_VEC_ALIAS(float, 3, 4)
-
-    static constexpr bool vectorized = true;
+    YAVL_VEC_ALIAS_VECTORIZED(float, 3, 4)
 
     union {
         struct {
@@ -363,9 +363,7 @@ struct alignas(16) Vec<float, 3> {
 
 template <>
 struct alignas(16) Vec<double, 2> {
-    YAVL_VEC_ALIAS(double, 2, 2)
-
-    static constexpr bool vectorized = true;
+    YAVL_VEC_ALIAS_VECTORIZED(double, 2, 2)
 
     union {
         struct {
@@ -376,11 +374,11 @@ struct alignas(16) Vec<double, 2> {
         };
 
         std::array<Scalar, Size> arr;
-        __m128 m;
+        __m128d m;
     };
 
     // Ctors
-    YAVL_VECTORIZED_CTOR(pd, __m128)
+    YAVL_VECTORIZED_CTOR(pd, __m128d)
 
     // Operators
     YAVL_DEFINE_VEC_INDEX_OP
@@ -430,14 +428,105 @@ struct alignas(16) Vec<double, 2> {
 #undef MATH_SUM_EXPRS
 };
 
-template <typename I>
-struct alignas(16) Vec<I, 4> {
+struct alignas(16) Vec<int, 4> {
+    YAVL_VEC_ALIAS_VECTORIZED(int, 4, 4)
 
+    union {
+        struct {
+            Scalar x, y, z, w;
+        };
+        struct {
+            Scalar r, g, b, a;
+        };
+
+        std::array<Scalar, Size> arr;
+        __m128i m;
+    };
+
+    // Ctors
+    YAVL_VECTORIZED_CTOR(epi32, __m128i)
+
+    // Operators
+    YAVL_DEFINE_VEC_INDEX_OP
+    YAVL_DEFINE_BASIC_ARITHMIC_OP(epi32)
+
+    // Misc funcs
+    template <int I0, int I1, int I2, int I3>
+    inline Vec shuffle() const {
+        return Vec(_mm_shuffle_epi32(m, _MM_SHUFFLE(I3, I2, I1, I0)));
+    }
+
+#define MISC_SHUFFLE_AVX_EXPRS                                          \
+    {                                                                   \
+        __m128i i = _mm_setr_epi32(args...);                            \
+        return _mm_castps_si128(_mm_permutevar_ps(_mm_castsi128_ps(m), i)); \
+    }
+
+    YAVL_DEFINE_MISC_FUNCS
+
+#undef MISC_SHUFFLE_AVX_EXPRS
+
+// Math funcs
+#define MATH_SUM_EXPRS                                                  \
+    {                                                                   \
+        auto t1 = _mm_hadd_epi32(m, m);                                 \
+        auto t2 = _mm_hadd_epi32(t1, t1);                               \
+        return _mm_cvtss_f32(t2);                                       \
+    }
+
+    YAVL_DEFINE_MATH_FUNCS
+
+#undef MATH_SUM_EXPRS
 };
 
 template <typename I>
 struct alignas(16) Vec<I, 3> {
+    YAVL_VEC_ALIAS_VECTORIZED(int, 3, 4)
 
+    union {
+        struct {
+            Scalar x, y, z;
+        };
+        struct {
+            Scalar r, g, b;
+        };
+
+        std::array<Scalar, Size> arr;
+        __m128i m;
+    };
+
+    // Ctors
+    YAVL_VECTORIZED_CTOR(epi32, __m128i);
+
+    // Operators
+    YAVL_DEFINE_VEC_INDEX_OP
+    YAVL_DEFINE_BASIC_ARITHMIC_OP(epi32)
+
+    // Misc funcs
+    template <int I0, int I1, int I2>
+    inline Vec shuffle() const {
+        return Vec(_mm_shuffle_epi32(m, _MM_SHUFFLE(0, I2, I1, I0)));
+    }
+
+#define MISC_SHUFFLE_AVX_EXPRS                                          \
+    {                                                                   \
+        __m128i i = _mm_setr_epi32(args...);                            \
+        return _mm_castps_si128(_mmpermutevar_ps(_mm_castsi128_ps(m), i)); \
+    }
+
+    YAVL_DEFINE_MISC_FUNCS
+
+#undef MISC_SHUFFLE_AVX_EXPRS
+
+    // Math funcs
+#define MATH_SUM_EXPRS                                                  \
+    {                                                                   \
+        return x + y + z;                                               \
+    }
+
+    YAVL_DEFINE_MATH_FUNCS
+
+#undef MATH_SUM_EXPRS
 };
 
 template <typename I>
