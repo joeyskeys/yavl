@@ -27,6 +27,24 @@ struct is_double<double> {
 };
 
 template <typename T>
-inline constexpr bool is_double_v = is_double<T>::value;
+constexpr bool is_double_v = is_double<T>::value;
+
+template <typename T>
+using is_int32 = std::bool_constant<std::is_integral_v<T> && sizeof(T) == 4>;
+
+template <typename T>
+constexpr bool is_int32_v = is_int32<T>::value;
+
+template <typename T>
+using is_int64 = std::bool_constant<std::is_integral_v<T> && sizeof(T) == 8>;
+
+template <typename T>
+constexpr bool is_int64_v = is_int64<T>::value;
+
+template <typename T>
+using enable_if_int32_t = std::enable_if_t<is_int32_v<T>>;
+
+template <typename T>
+using enable_if_int64_t = std::enable_if_t<is_int64_v<T>>;
 
 }

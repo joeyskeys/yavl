@@ -428,8 +428,9 @@ struct alignas(16) Vec<double, 2> {
 #undef MATH_SUM_EXPRS
 };
 
-struct alignas(16) Vec<int, 4> {
-    YAVL_VEC_ALIAS_VECTORIZED(int, 4, 4)
+template <typename I, enable_if_int32_t<I>>
+struct alignas(16) Vec<I, 4> {
+    YAVL_VEC_ALIAS_VECTORIZED(I, 4, 4)
 
     union {
         struct {
@@ -471,7 +472,7 @@ struct alignas(16) Vec<int, 4> {
     {                                                                   \
         auto t1 = _mm_hadd_epi32(m, m);                                 \
         auto t2 = _mm_hadd_epi32(t1, t1);                               \
-        return _mm_cvtss_f32(t2);                                       \
+        return _mm_cvtsi128_si32(t2);
     }
 
     YAVL_DEFINE_MATH_FUNCS
@@ -479,9 +480,9 @@ struct alignas(16) Vec<int, 4> {
 #undef MATH_SUM_EXPRS
 };
 
-template <typename I>
+template <typename I, enable_if_int32_t<I>>
 struct alignas(16) Vec<I, 3> {
-    YAVL_VEC_ALIAS_VECTORIZED(int, 3, 4)
+    YAVL_VEC_ALIAS_VECTORIZED(I, 3, 4)
 
     union {
         struct {
@@ -511,7 +512,7 @@ struct alignas(16) Vec<I, 3> {
 #define MISC_SHUFFLE_AVX_EXPRS                                          \
     {                                                                   \
         __m128i i = _mm_setr_epi32(args...);                            \
-        return _mm_castps_si128(_mmpermutevar_ps(_mm_castsi128_ps(m), i)); \
+        return _mm_castps_si128(_mm_permutevar_ps(_mm_castsi128_ps(m), i)); \
     }
 
     YAVL_DEFINE_MISC_FUNCS
@@ -529,9 +530,56 @@ struct alignas(16) Vec<I, 3> {
 #undef MATH_SUM_EXPRS
 };
 
-template <typename I>
+template <typename I, enable_if_int64_t<I>>
 struct alignas(16) Vec<I, 2> {
+    YAVL_VEC_ALIAS_VECTORIZED(I, 2, 2)
 
+    union {
+        struct {
+            Scalar x, y;
+        };
+        struct {
+            Scalar r, g;
+        };
+        
+        std::array<Scalar, Size> arr;
+        __m128i m;
+    };
+
+    // Ctors
+    YAVL_VECTORIZED_CTOR(epi64, __m128i);
+
+    // Operators
+    YAVL_DEFINE_VEC_INDEX_OP
+    YAVL_DEFINE_BASIC_ARITHMIC_OP(epi32)
+
+    // Misc funcs
+    template <int I0, int I1>
+    inline Vec shuffle() const {
+        return Vec(_mm_shuffle_epi32(m,
+            _MM_SHUFFLE(I1 * 2 + 1, I1 * 2, I0 * 2 + 1, I0 * 2)));
+    }
+
+#define MISC_SHUFFLE_AVX_EXPRS                                          \
+    {                                                                   \
+        __m128i i = _mm_setr_epi32(args..., 0, 0);                      \
+        i = _mm_shuffle_epi32(i, 0b01010000);                           \
+        return _mm_castpd_si128(_mm_permutevar_pd(_mm_castsi128_pd(m), _mm_slli_epi64(i, 1))); \
+    }
+
+    YAVL_DEFINE_MISC_FUNCS
+
+#undef MISC_SHUFFLE_AVX_EXPRS
+
+    // Math funcs
+#define MATH_SUM_EXPRS                                                  \
+    {                                                                   \
+        return x + y;                                                   \
+    }
+
+    YAVL_DEFINE_MATH_FUNCS
+
+#undef MATH_SUM_EXPRS
 };
 
 #undef OP_VEC_EXPRS
