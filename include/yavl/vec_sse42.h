@@ -107,7 +107,7 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
     static constexpr bool vectorized = true;
 
 #define YAVL_VECTORIZED_CTOR(INTRIN_TYPE, REGI_TYPE)                    \
-    Vec() : m(_mm_set1_##INTRIN_TYPE(0)) {}                             \
+    Vec() : m(_mm_set1_##INTRIN_TYPE(static_cast<Scalar>(0))) {}        \
     template <typename V>                                               \
         requires std::default_initializable<V> && std::convertible_to<V, Scalar> \
     Vec(V v) : m(_mm_set1_##INTRIN_TYPE(static_cast<Scalar>(v))) {}     \
@@ -402,6 +402,10 @@ struct alignas(16) Vec<double, 2> {
         return _mm_permutevar_pd(m, _mm_slli_epi(i, 1));                \
     }
 
+    YAVL_DEFINE_MISC_FUNCS
+
+#undef MISC_SHUFFLE_AVX_EXPRS
+
     // Geo funcs
 #define GEO_DOT_EXPRS                                                   \
     {                                                                   \
@@ -428,8 +432,8 @@ struct alignas(16) Vec<double, 2> {
 #undef MATH_SUM_EXPRS
 };
 
-template <typename I, enable_if_int32_t<I>>
-struct alignas(16) Vec<I, 4> {
+template <typename I>
+struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 4, 4)
 
     union {
@@ -472,7 +476,7 @@ struct alignas(16) Vec<I, 4> {
     {                                                                   \
         auto t1 = _mm_hadd_epi32(m, m);                                 \
         auto t2 = _mm_hadd_epi32(t1, t1);                               \
-        return _mm_cvtsi128_si32(t2);
+        return _mm_cvtsi128_si32(t2);                                   \
     }
 
     YAVL_DEFINE_MATH_FUNCS
@@ -480,8 +484,8 @@ struct alignas(16) Vec<I, 4> {
 #undef MATH_SUM_EXPRS
 };
 
-template <typename I, enable_if_int32_t<I>>
-struct alignas(16) Vec<I, 3> {
+template <typename I>
+struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 3, 4)
 
     union {
@@ -530,8 +534,8 @@ struct alignas(16) Vec<I, 3> {
 #undef MATH_SUM_EXPRS
 };
 
-template <typename I, enable_if_int64_t<I>>
-struct alignas(16) Vec<I, 2> {
+template <typename I>
+struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 2, 2)
 
     union {

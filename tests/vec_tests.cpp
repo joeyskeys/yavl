@@ -67,3 +67,31 @@ TEST_CASE("Vector tests", "vector") {
     auto v22 = v21.shuffle<1, 0>();
     REQUIRE(v22.x == 2);
 }
+
+#define REQUIRE_ADAP(VEC, EXPR, VALUE)                                  \
+    {                                                                   \
+        if constexpr (std::is_floating_point_v(VEC::Scalar))            \
+            REQUIRE(VEC##EXPR == Approx(VALUE));                        \
+        else                                                            \
+            REQUIRE(VEC##EXPR == VALUE);                                \
+    }
+
+TEMPLATE_PRODUCT_TEST_CASE("Vec tests", "[vec]", Vec, ((float, double, int, uint32_t), (2, 3, 4), (true, false))) {
+    TestType vec0;
+    REQUIRE_ADAP(vec0, .x, 0);
+    REQUIRE_ADAP(vec0, .r, 0);
+
+    TestType vec1{1};
+    REQUIRE_ADAP(vec1, .x, 1);
+    REQUIRE_ADAP(vec1, .r, 1);
+    REQUIRE_ADAP(vec1, .y, 1);
+    REQUIRE_ADAP(vec1, .g, 1);
+    if constexpr (vec1.Size > 2) {
+        REQUIRE_ADAP(vec1, .z, 1);
+        REQUIRE_ADAP(vec1, .b, 1);
+    }
+    if constexpr (vec1.Size > 3) {
+        REQUIRE_ADAP(vec1, .w, 1);
+        REQUIRE_ADAP(vec1, .a, 1);
+    }
+}

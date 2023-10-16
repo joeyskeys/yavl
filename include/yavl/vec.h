@@ -67,7 +67,7 @@ namespace yavl
         return arr[i];                                                  \
     }
 
-template <typename T, uint32_t N, bool enable_vec=true>
+template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Vec {
     YAVL_VEC_ALIAS(T, N, N)
     YAVL_VEC_OPTIONAL_ALIAS(Scalar, N)
