@@ -123,6 +123,12 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
     }                                                                   \
     Vec(const REGI_TYPE val) : m(val) {}
 
+#define COPY_ASSIGN_EXPRS(INTRIN_TYPE)                                  \
+    {                                                                   \
+        _mm_store_##INTRIN_TYPE(arr.data(), b.m);                       \
+        return *this;                                                   \
+    }
+
 #define OP_VEC_EXPRS(OP, NAME, INTRIN_TYPE)                             \
     return Vec(_mm_##NAME##_##INTRIN_TYPE(m, v.m));
 
@@ -240,8 +246,7 @@ struct alignas(16) Vec<float, 4> {
     YAVL_VECTORIZED_CTOR(ps, __m128)
 
     // Operators
-    YAVL_DEFINE_VEC_INDEX_OP
-    YAVL_DEFINE_BASIC_ARITHMIC_OP(ps)
+    YAVL_DEFINE_BASIC_OP(ps, ps)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -306,8 +311,7 @@ struct alignas(16) Vec<float, 3> {
     YAVL_VECTORIZED_CTOR(ps, __m128)
 
     // Operators
-    YAVL_DEFINE_VEC_INDEX_OP
-    YAVL_DEFINE_BASIC_ARITHMIC_OP(ps)
+    YAVL_DEFINE_BASIC_OP(ps, ps)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -381,8 +385,7 @@ struct alignas(16) Vec<double, 2> {
     YAVL_VECTORIZED_CTOR(pd, __m128d)
 
     // Operators
-    YAVL_DEFINE_VEC_INDEX_OP
-    YAVL_DEFINE_BASIC_ARITHMIC_OP(pd)
+    YAVL_DEFINE_BASIC_OP(pd, pd)
 
     // Misc funcs
 #if defined(YAVL_X86_AVX)
@@ -452,8 +455,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
     YAVL_VECTORIZED_CTOR(epi32, __m128i)
 
     // Operators
-    YAVL_DEFINE_VEC_INDEX_OP
-    YAVL_DEFINE_BASIC_ARITHMIC_OP(epi32)
+    YAVL_DEFINE_BASIC_OP(epi32, si128)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -504,8 +506,7 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
     YAVL_VECTORIZED_CTOR(epi32, __m128i);
 
     // Operators
-    YAVL_DEFINE_VEC_INDEX_OP
-    YAVL_DEFINE_BASIC_ARITHMIC_OP(epi32)
+    YAVL_DEFINE_BASIC_OP(epi32, si128)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -554,8 +555,7 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
     YAVL_VECTORIZED_CTOR(epi64, __m128i);
 
     // Operators
-    YAVL_DEFINE_VEC_INDEX_OP
-    YAVL_DEFINE_BASIC_ARITHMIC_OP(epi32)
+    YAVL_DEFINE_BASIC_OP(epi32, si128)
 
     // Misc funcs
     template <int I0, int I1>

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <stdint.h>
 #include <type_traits>
 
@@ -67,6 +68,19 @@ namespace yavl
         return arr[i];                                                  \
     }
 
+#define YAVL_DEFINE_VEC_COPY_ASSIGN_OP(INTRIN_TYPE)                     \
+    Vec& operator =(const Vec& b) {                                     \
+        COPY_ASSIGN_EXPRS(INTRIN_TYPE)                                  \
+    }
+
+#define YAVL_DEFINE_BASIC_MISC_OP(INTRIN_TYPE)                          \
+    YAVL_DEFINE_VEC_INDEX_OP                                            \
+    YAVL_DEFINE_VEC_COPY_ASSIGN_OP(INTRIN_TYPE)
+
+#define YAVL_DEFINE_BASIC_OP(INTRIN_TYPE, CMD_SUFFIX)                   \
+    YAVL_DEFINE_BASIC_MISC_OP(CMD_SUFFIX)                               \
+    YAVL_DEFINE_BASIC_ARITHMIC_OP(INTRIN_TYPE)
+
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Vec {
     YAVL_VEC_ALIAS(T, N, N)
@@ -102,7 +116,7 @@ struct Vec {
     constexpr Vec(Ts... args) {
         static_assert(sizeof...(args) == 1 || sizeof...(args) == Size);
         if constexpr (sizeof...(args) == 1)
-            arr.fill(static_cast<Scalar>(args)...);
+            arr.fill( static_cast<Scalar>(args)... );
         else
             arr = { static_cast<Scalar>(args)... };
     }
@@ -111,7 +125,11 @@ struct Vec {
     Vec(Vec&&) = default;
 
     // Operators
-    YAVL_DEFINE_VEC_INDEX_OP
+#define COPY_ASSIGN_EXPRS(INTRIN_TYPE)                                  \
+    {                                                                   \
+        std::memcpy(arr.data(), b.arr.data(), sizeof(Scalar) * Size);   \
+        return *this;                                                   \
+    }
 
 #define OP_VEC_EXPRS(OP, NAME, INTRIN_TYPE)                             \
     Vec tmp;                                                            \
@@ -141,8 +159,9 @@ struct Vec {
         tmp[i] = s OP v[i];                                             \
     return tmp;
 
-    YAVL_DEFINE_BASIC_ARITHMIC_OP( )
+    YAVL_DEFINE_BASIC_OP( , )
 
+#undef COPY_ASSIGN_EXPRS
 #undef OP_VEC_EXPRS
 #undef OP_VEC_ASSIGN_EXPRS
 #undef OP_SCALAR_EXPRS
