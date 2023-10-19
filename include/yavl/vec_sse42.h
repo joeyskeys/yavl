@@ -5,7 +5,7 @@
 namespace yavl
 {
 
-static inline __m128 rcp_sse42_impl(const __m128 m) {
+static inline __m128 rcp_ps_impl(const __m128 m) {
     // Copied from enoki with some extra comments
 #if defined(YAVL_X86_AVX512ER)
     // rel err < 2^28, use as is
@@ -53,6 +53,11 @@ static inline __m128 rcp_sse42_impl(const __m128 m) {
     return _mm_blendv_ps(r, ro, t1);
 #endif
 #endif
+}
+
+static inline __m128 rcp_pd_impl(const __m128 m) {
+    // placeholder...
+    return Vec{0};
 }
 
 static inline __m128 rsqrt_sse42_impl(const __m128 m) {
@@ -152,13 +157,18 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
 template <typename Vec, typename ...Ts>
 static inline Vec shuffle_impl(const Vec& v, Ts ...args)
 {
+    static_assert(sizeof...(Ts) == Vec::Size);
+
 #if defined(YAVL_X86_AVX)
-    static_assert(sizeof...(args) > 2);
     __m128i i;
-    if constexpr (sizeof...(args) == 3)
+    if constexpr (sizeof...(args) == 4)
+        i = _mm_setr_epi32(args...);
+    else if constexpr (sizeof...(args) == 3)
         i = _mm_setr_epi32(args..., 0);
-    else
-        i = _mm_setr_epi64(args...);
+    else if constexpr (sizeof...(args) == 2) {
+        i = _mm_setr_epi32(args..., 0, 0);
+        i = _mm_shuffle_epi32(i, 0b11011100);
+    }
 
     if constexpr (std::is_floating_point_v<typename Vec::Scalar>) {
         if constexpr (sizeof...(args) > 2)
@@ -176,7 +186,7 @@ static inline Vec shuffle_impl(const Vec& v, Ts ...args)
 
 #define MISC_SHUFFLE_EXPRS                                              \
     {                                                                   \
-        return Vec(shuffle_impl<true>(m, args...));                           \
+        return Vec(shuffle_impl(*this, args...));                           \
     }
 
 #define MATH_ABS_EXPRS                                                  \
@@ -188,7 +198,10 @@ static inline Vec shuffle_impl(const Vec& v, Ts ...args)
 
 #define MATH_RCP_EXPRS                                                  \
     {                                                                   \
-        return Vec(rcp_sse42_impl(m));                                  \
+        if constexpr (Vec::Size > 2)                                    \
+            return Vec(rcp_ps_impl(m));                                 \
+        else                                                            \
+            return Vec(rcp_pd_impl(m));                                 \
     }
 
 #define MATH_SQRT_EXPRS                                                 \

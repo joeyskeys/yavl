@@ -173,11 +173,11 @@ struct Vec {
     template <typename ...Ts>                                           \
         requires (std::default_initializable<Ts> && ...) &&             \
             (std::convertible_to<Ts, Scalar> && ...)                    \
-    inline Vec shuffle(Ts... args) const {                    \
+    inline Vec shuffle(Ts... args) const {                              \
         MISC_SHUFFLE_EXPRS                                              \
     }
 
-#define MISC_BASE_SHUFFLE_EXPRS                                              \
+#define MISC_BASE_SHUFFLE_EXPRS                                         \
     {                                                                   \
         static_assert(sizeof...(args) == Size);                         \
         Vec tmp;                                                        \
@@ -196,6 +196,16 @@ struct Vec {
 #define YAVL_DEFINE_MISC_FUNCS                                          \
     MISC_SHUFFLE_FUNC
 
+    template <int ...Is>
+    inline Vec shuffle() const {
+        static_assert(sizeof...(Is) == Size);                           \
+        std::array<int, sizeof...(Is)> indice{ Is... };                 \
+        Vec tmp;                                                        \
+        for (int i = 0; i < Size; ++i)                                  \
+            tmp.arr[i] = arr[indice[i]];                                \
+        return tmp;                                                     \
+    }
+
     YAVL_DEFINE_MISC_FUNCS
 
 #undef MISC_SHUFFLE_EXPRS
@@ -213,6 +223,17 @@ struct Vec {
 
 #define YAVL_DEFINE_GEO_FUNCS                                           \
     GEO_DOT_FUNC
+
+    inline auto cross(const Vec& b) const {
+        static_assert(Vec::Size > 1 && Vec::Size < 4);
+        if constexpr (Vec::Size == 2) {
+            return x * b.y - y * b.x;
+        }
+        else {
+            return Vec(y * b.z - z * b.y, z * b.x - x * b.z,
+                x * b.y - y * b.x);
+        }
+    }
 
     YAVL_DEFINE_GEO_FUNCS
 
@@ -299,7 +320,7 @@ struct Vec {
 
 #define MATH_RSQRT_EXPRS                                                \
     {                                                                   \
-        return 1. / length();                                           \
+        return 1. / sqrt();                                             \
     }
 
 /*
