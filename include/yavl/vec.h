@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <concepts>
 #include <stdint.h>
 #include <type_traits>
 
@@ -367,17 +368,23 @@ struct Vec {
 
 #define MATH_LERP_VEC_EXPRS MATH_LERP_SCALAR_EXPRS
 
-#define YAVL_DEFINE_MATH_FUNCS                                          \
+#define YAVL_DEFINE_MATH_COMMON_FUNCS                                   \
     MATH_LENGTH_SQUARED_FUNC                                            \
     MATH_LENGTH_FUNC                                                    \
-    MATH_NORMALIZE_FUNC                                                 \
     MATH_ABS_FUNC                                                       \
     MATH_SUM_FUNC                                                       \
-    MATH_SQUARE_FUNC                                                    \
+    MATH_SQUARE_FUNC
+
+#define YAVL_DEFINE_MATH_FP_FUNCS                                       \
+    MATH_NORMALIZE_FUNC                                                 \
     MATH_RCP_FUNC                                                       \
     MATH_SQRT_FUNC                                                      \
     MATH_RSQRT_FUNC                                                     \
     MATH_LERP_FUNC
+
+#define YAVL_DEFINE_MATH_FUNCS                                          \
+    YAVL_DEFINE_MATH_COMMON_FUNCS                                       \
+    YAVL_DEFINE_MATH_FP_FUNCS
 
     YAVL_DEFINE_MATH_FUNCS
 

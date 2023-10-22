@@ -1,7 +1,5 @@
 #pragma once
 
-#include <concepts>
-
 namespace yavl
 {
 
@@ -56,15 +54,43 @@ static inline __m128 rcp_ps_impl(const __m128 m) {
 }
 
 static inline __m128 rcp_pd_impl(const __m128 m) {
-    // placeholder...
-    return Vec{0};
+    // Copied from enoki
+#if defined(YAVL_X86_AVX512ER) || defined(YAVL_X86_AVX512VL)
+    __m128d r;
+#if defined(YAVL_X86_AVX512ER)
+    // rel err < 2^-28
+    r = _mm512_castpd512_pd128(
+        _mm512_rcp28_pd(_mm512_castpd128_pd512(m)));
+#elif defined(YAVL_X86_AVX512VL)
+    // rel err < 2^-14
+    r = _mm_rcp14_pd(m);
+#endif
+
+    __m128d ro = r, t0, t1;
+    for (int i = 0; i < (has_avx512er ? 1 : 2); ++i) {
+        t0 = _mm_add_pd(r, r);
+        t1 = _mm_mul_pd(r, m);
+        r = _mm_fnmadd_pd(t1, r, t0);
+    }
+
+#if defined(YAVL_X86_AVX512VL)
+    return _mm_fixupimm_pd(r, m, _mm_set1_epi32(0x0087A622), 0);
+#else
+    return _mm_blendv_pd(r, ro, t1)
+#endif
+
+#else
+    alignas(16) std::array<double, 2> dst;
+    _mm_store_pd(dst.data(), m);
+    return _mm_setr_pd(1. / dst[0], 1. / dst[1]);
+#endif
 }
 
-static inline __m128 rsqrt_sse42_impl(const __m128 m) {
+static inline __m128 rsqrt_ps_impl(const __m128 m) {
     // Copied from enoki with extra comments
 #if defined(YAVL_X86_AVX512ER)
     return _mm512_castps512_ps128(
-        // rel err < 2^28, use as is
+        // rel err < 2^-28, use as is
         _mm512_rsqrt28_ps(_mm512_castps128_ps512(m));
     )
 #else
@@ -104,6 +130,47 @@ static inline __m128 rsqrt_sse42_impl(const __m128 m) {
 #else
     return _mm_blendv_ps(r, ro, t1);
 #endif
+#endif
+}
+
+static inline __m128d rsqrt_pd_impl(const __m128d m) {
+    // Copied from enoki
+#if defined(YAVL_X86_AVX512ER) || defined(YAVL_X86_AVX512VL)
+    __m128d r;
+#if defined(YAVL_X86_AVX512ER)
+    // rel err < 2^-28
+    r = _mm512_castpd512_pd128(
+        _mm512_rsqrt28_pd(_mm512_castpd128_pd512(m)));
+#elif defined(YAVL_X86_AVX512VL)
+    // rel err < 2^-14
+    r = _mm_rsqrt14_pd(m);
+#endif
+
+    const __m128d c0 = _mm_set1_pd(0.5),
+                  c1 = _mm_set1_pd(3.0);
+
+    __m128d t0, t1;
+#ifndef YAVL_X86_AVX512VL
+    __m128d ro = r;
+#endif
+
+    // Refine using 1-2 Newton-Raphson iterations
+    for (int i = 0; i < (has_avx512er ? 1 : 2); ++i) {
+        t0 = _mm_mul_pd(r, c0);
+        t1 = _mm_mul_pd(r, m);
+        r = _mm_mul_pd(_mm_fnmadd_pd(t1, r, c1), t0);
+    }
+
+#if defined(YAVL_X86_AVX512VL)
+    return _mm_fixupimm_pd(r, m, _mm_set1_epi32(0x0383A622), 0);
+#else
+    return _mm_blendv_pd(r, ro, t1);
+#endif
+
+#else
+    alignas(16) std::array<double, 2> dst;
+    _mm_store_pd(dst.data(), m);
+    return _mm_setr_pd(1. / sqrt(dst[0]), 1. / sqrt(dst[1]));
 #endif
 }
 
@@ -206,12 +273,18 @@ static inline Vec shuffle_impl(const Vec& v, Ts ...args)
 
 #define MATH_SQRT_EXPRS                                                 \
     {                                                                   \
-        return Vec(_mm_sqrt_ps(m));                                     \
+        if constexpr (Vec::Size > 2)                                    \
+            return Vec(_mm_sqrt_ps(m));                                 \
+        else                                                            \
+            return Vec(_mm_sqrt_pd(m));                                 \
     }
 
 #define MATH_RSQRT_EXPRS                                                \
     {                                                                   \
-        return Vec(rsqrt_sse42_impl(m));                                \
+        if constexpr (Vec::Size > 2)                                    \
+            return Vec(rsqrt_ps_impl(m));                               \
+        else                                                            \
+            return Vec(rsqrt_pd_impl(m));                               \
     }
 
 #if defined(YAVL_X86_FMA)
@@ -494,7 +567,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
         return _mm_cvtsi128_si32(t2);                                   \
     }
 
-    YAVL_DEFINE_MATH_FUNCS
+    YAVL_DEFINE_MATH_COMMON_FUNCS
 
 #undef MATH_SUM_EXPRS
 };
@@ -543,7 +616,7 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
         return x + y + z;                                               \
     }
 
-    YAVL_DEFINE_MATH_FUNCS
+    YAVL_DEFINE_MATH_COMMON_FUNCS
 
 #undef MATH_SUM_EXPRS
 };
@@ -594,7 +667,7 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
         return x + y;                                                   \
     }
 
-    YAVL_DEFINE_MATH_FUNCS
+    YAVL_DEFINE_MATH_COMMON_FUNCS
 
 #undef MATH_SUM_EXPRS
 };
@@ -604,11 +677,19 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
 #undef OP_SCALAR_EXPRS
 #undef OP_SCALAR_ASSING_EXPRS
 #undef OP_FRIEND_SCALAR_EXPRS
+#undef COPY_ASSIGN_EXPRS
+
+#undef MISC_SHUFFLE_EXPRS
 
 #undef MATH_ABS_EXPRS
+#undef MATH_RCP_EXPRS
 #undef MATH_SQRT_EXPRS
-#undef MATH_EXP_EXPRS
-#undef MATH_POW_EXPRS
-#undef MATH_LERP_EXPRS
-#undef YAVL_X86_FMA
+#undef MATH_RSQRT_EXPRS
+#undef MULADD
+#undef MULSUB
+#undef MATH_LERP_SCALAR_EXPRS
+#undef MATH_LERP_VEC_EXPRS
+
+#undef YAVL_VECTORIZED_CTOR
+#undef YAVL_VEC_ALIAS_VECTORIZED
 }
