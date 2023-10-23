@@ -26,37 +26,37 @@ namespace yavl
     using B = std::conditional_t<(N > 2), TYPE, empty_t>;               \
     using A = std::conditional_t<(N > 3), TYPE, empty_t>;
 
-#define YAVL_DEFINE_VEC_OP(OP, NAME, INTRIN_TYPE)                       \
+#define YAVL_DEFINE_VEC_OP(BITS, OP, NAME, INTRIN_TYPE)                 \
     auto operator OP(const Vec& v) const {                              \
-        OP_VEC_EXPRS(OP, NAME, INTRIN_TYPE)                             \
+        OP_VEC_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                       \
     }                                                                   \
     auto operator OP##=(const Vec& v) {                                 \
-        OP_VEC_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                      \
+        OP_VEC_ASSIGN_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                \
     }
 
-#define YAVL_DEFINE_SCALAR_OP(OP, NAME, INTRIN_TYPE)                    \
+#define YAVL_DEFINE_SCALAR_OP(BITS, OP, NAME, INTRIN_TYPE)              \
     auto operator OP(const Scalar v) const {                            \
-        OP_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                          \
+        OP_SCALAR_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                    \
     }                                                                   \
     auto operator OP##=(const Scalar v) {                               \
-        OP_SCALAR_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                   \
+        OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, INTRIN_TYPE)             \
     }
 
-#define YAVL_DEFINE_FRIEND_OP(OP, NAME, INTRIN_TYPE)                    \
+#define YAVL_DEFINE_FRIEND_OP(BITS, OP, NAME, INTRIN_TYPE)              \
     friend auto operator OP(const Scalar s, const Vec& v) {             \
-        OP_FRIEND_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                   \
+        OP_FRIEND_SCALAR_EXPRS(BITS, OP, NAME, INTRIN_TYPE)             \
     }
 
-#define YAVL_DEFINE_OP(OP, NAME, INTRIN_TYPE)                           \
-    YAVL_DEFINE_VEC_OP(OP, NAME, INTRIN_TYPE)                           \
-    YAVL_DEFINE_SCALAR_OP(OP, NAME, INTRIN_TYPE)                        \
-    YAVL_DEFINE_FRIEND_OP(OP, NAME, INTRIN_TYPE)
+#define YAVL_DEFINE_OP(BITS, OP, NAME, INTRIN_TYPE)                     \
+    YAVL_DEFINE_VEC_OP(BITS, OP, NAME, INTRIN_TYPE)                     \
+    YAVL_DEFINE_SCALAR_OP(BITS, OP, NAME, INTRIN_TYPE)                  \
+    YAVL_DEFINE_FRIEND_OP(BITS, OP, NAME, INTRIN_TYPE)
 
-#define YAVL_DEFINE_BASIC_ARITHMIC_OP(INTRIN_TYPE)                      \
-    YAVL_DEFINE_OP(+, add, INTRIN_TYPE)                                 \
-    YAVL_DEFINE_OP(-, sub, INTRIN_TYPE)                                 \
-    YAVL_DEFINE_OP(*, mul, INTRIN_TYPE)                                 \
-    YAVL_DEFINE_OP(/, div, INTRIN_TYPE)
+#define YAVL_DEFINE_BASIC_ARITHMIC_OP(BITS, INTRIN_TYPE)                \
+    YAVL_DEFINE_OP(BITS, +, add, INTRIN_TYPE)                           \
+    YAVL_DEFINE_OP(BITS, -, sub, INTRIN_TYPE)                           \
+    YAVL_DEFINE_OP(BITS, *, mul, INTRIN_TYPE)                           \
+    YAVL_DEFINE_OP(BITS, /, div, INTRIN_TYPE)
 
 
 #define YAVL_DEFINE_VEC_INDEX_OP                                        \
@@ -69,18 +69,18 @@ namespace yavl
         return arr[i];                                                  \
     }
 
-#define YAVL_DEFINE_VEC_COPY_ASSIGN_OP(INTRIN_TYPE)                     \
+#define YAVL_DEFINE_VEC_COPY_ASSIGN_OP(BITS, INTRIN_TYPE)               \
     Vec& operator =(const Vec& b) {                                     \
-        COPY_ASSIGN_EXPRS(INTRIN_TYPE)                                  \
+        COPY_ASSIGN_EXPRS(BITS, INTRIN_TYPE)                            \
     }
 
-#define YAVL_DEFINE_BASIC_MISC_OP(INTRIN_TYPE)                          \
+#define YAVL_DEFINE_BASIC_MISC_OP(BITS, INTRIN_TYPE)                    \
     YAVL_DEFINE_VEC_INDEX_OP                                            \
-    YAVL_DEFINE_VEC_COPY_ASSIGN_OP(INTRIN_TYPE)
+    YAVL_DEFINE_VEC_COPY_ASSIGN_OP(BITS, INTRIN_TYPE)
 
-#define YAVL_DEFINE_BASIC_OP(INTRIN_TYPE, CMD_SUFFIX)                   \
-    YAVL_DEFINE_BASIC_MISC_OP(CMD_SUFFIX)                               \
-    YAVL_DEFINE_BASIC_ARITHMIC_OP(INTRIN_TYPE)
+#define YAVL_DEFINE_BASIC_OP(BITS, INTRIN_TYPE, CMD_SUFFIX)             \
+    YAVL_DEFINE_BASIC_MISC_OP(BITS, CMD_SUFFIX)                         \
+    YAVL_DEFINE_BASIC_ARITHMIC_OP(BITS, INTRIN_TYPE)
 
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Vec {
@@ -126,41 +126,41 @@ struct Vec {
     Vec(Vec&&) = default;
 
     // Operators
-#define COPY_ASSIGN_EXPRS(INTRIN_TYPE)                                  \
+#define COPY_ASSIGN_EXPRS(BITS, INTRIN_TYPE)                            \
     {                                                                   \
         std::memcpy(arr.data(), b.arr.data(), sizeof(Scalar) * Size);   \
         return *this;                                                   \
     }
 
-#define OP_VEC_EXPRS(OP, NAME, INTRIN_TYPE)                             \
+#define OP_VEC_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                       \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
         tmp[i] = arr[i] OP v[i];                                        \
     return tmp;
 
-#define OP_VEC_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                      \
+#define OP_VEC_ASSIGN_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                \
     for (int i = 0; i < Size; ++i)                                      \
         arr[i] OP##= v[i];                                              \
     return *this;
 
-#define OP_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                          \
+#define OP_SCALAR_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                    \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
         tmp[i] = arr[i] OP v;                                           \
     return tmp;
 
-#define OP_SCALAR_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                   \
+#define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, INTRIN_TYPE)             \
     for (int i = 0; i < Size; ++i)                                      \
         arr[i] OP##= v;                                                 \
     return *this;
 
-#define OP_FRIEND_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                   \
+#define OP_FRIEND_SCALAR_EXPRS(BITS, OP, NAME, INTRIN_TYPE)             \
     Vec tmp;                                                            \
     for (int i = 0; i < Size; ++i)                                      \
         tmp[i] = s OP v[i];                                             \
     return tmp;
 
-    YAVL_DEFINE_BASIC_OP( , )
+    YAVL_DEFINE_BASIC_OP( , , )
 
 #undef COPY_ASSIGN_EXPRS
 #undef OP_VEC_EXPRS
@@ -264,12 +264,12 @@ struct Vec {
         return *this * rcp;                                             \
     }
 
-#define MATH_ABS_FUNC                                                   \
+#define MATH_ABS_FUNC(BITS, INTRIN_TYPE)                                \
     inline auto abs() const {                                           \
-        MATH_ABS_EXPRS                                                  \
+        MATH_ABS_EXPRS(BITS, INTRIN_TYPE)                               \
     }
 
-#define MATH_ABS_EXPRS                                                  \
+#define MATH_ABS_EXPRS(BITS, INTRIN_TYPE)                               \
     {                                                                   \
         Vec tmp;                                                        \
         for (int i = 0; i < Size; ++i)                                  \
@@ -368,25 +368,25 @@ struct Vec {
 
 #define MATH_LERP_VEC_EXPRS MATH_LERP_SCALAR_EXPRS
 
-#define YAVL_DEFINE_MATH_COMMON_FUNCS                                   \
+#define YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, INTRIN_TYPE)                \
     MATH_LENGTH_SQUARED_FUNC                                            \
     MATH_LENGTH_FUNC                                                    \
-    MATH_ABS_FUNC                                                       \
+    MATH_ABS_FUNC(BITS, INTRIN_TYPE)                                    \
     MATH_SUM_FUNC                                                       \
     MATH_SQUARE_FUNC
 
-#define YAVL_DEFINE_MATH_FP_FUNCS                                       \
+#define YAVL_DEFINE_MATH_FP_FUNCS(BITS, INTRIN_TYPE)                    \
     MATH_NORMALIZE_FUNC                                                 \
     MATH_RCP_FUNC                                                       \
     MATH_SQRT_FUNC                                                      \
     MATH_RSQRT_FUNC                                                     \
     MATH_LERP_FUNC
 
-#define YAVL_DEFINE_MATH_FUNCS                                          \
-    YAVL_DEFINE_MATH_COMMON_FUNCS                                       \
-    YAVL_DEFINE_MATH_FP_FUNCS
+#define YAVL_DEFINE_MATH_FUNCS(BITS, INTRIN_TYPE)                       \
+    YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, INTRIN_TYPE)                    \
+    YAVL_DEFINE_MATH_FP_FUNCS(BITS, INTRIN_TYPE)
 
-    YAVL_DEFINE_MATH_FUNCS
+    YAVL_DEFINE_MATH_FUNCS(, )
 
 #undef MATH_LENGTH_SQUARED_EXPRS
 #undef MATH_LENGTH_EXPRS

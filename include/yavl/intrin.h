@@ -222,3 +222,25 @@ template <typename T, uint32_t Size>
 using intrinsic_type_t = typename intrinsic_type<T, Size>::type;
 
 #pragma GCC diagnostic pop
+
+/*
+// An attempt to remove macros by using if constexpr.
+// Much more typing...
+template <typename T, uint32_t Bits>
+auto intrin_set1(const T v) {
+    static_assert(Bits == 32 || Bits == 64);
+
+    if constexpr (std::is_floating_point_v<T>) {
+        if constexpr (Bits == 32)
+            return _mm_set1_ps(v);
+        else
+            return _mm_set1_pd(v);
+    }
+    else {
+        if constexpr (Bits == 32)
+            return _mm_set1_epi32(v);
+        else
+            return _mm_set1_epi64(v);
+    }
+}
+*/

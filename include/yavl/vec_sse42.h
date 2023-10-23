@@ -174,93 +174,11 @@ static inline __m128d rsqrt_pd_impl(const __m128d m) {
 #endif
 }
 
-#define YAVL_VEC_ALIAS_VECTORIZED(TYPE, N, INTRIN_N)                    \
-    YAVL_VEC_ALIAS(TYPE, N, INTRIN_N)                                   \
-    static constexpr bool vectorized = true;
-
-#define YAVL_VECTORIZED_CTOR(INTRIN_TYPE, REGI_TYPE)                    \
-    Vec() : m(_mm_set1_##INTRIN_TYPE(static_cast<Scalar>(0))) {}        \
-    template <typename V>                                               \
-        requires std::default_initializable<V> && std::convertible_to<V, Scalar> \
-    Vec(V v) : m(_mm_set1_##INTRIN_TYPE(static_cast<Scalar>(v))) {}     \
-    template <typename ...Ts>                                           \
-        requires (std::default_initializable<Ts> && ...) &&             \
-            (std::convertible_to<Ts, Scalar> && ...)                    \
-    constexpr Vec(Ts... args) {                                         \
-        static_assert(sizeof...(args) > 1);                             \
-        if constexpr (sizeof...(Ts) == IntrinSize - 1)                  \
-            m = _mm_setr_##INTRIN_TYPE(args..., 0);                     \
-        else                                                            \
-            m = _mm_setr_##INTRIN_TYPE(args...);                        \
-    }                                                                   \
-    Vec(const REGI_TYPE val) : m(val) {}
-
-#define COPY_ASSIGN_EXPRS(INTRIN_TYPE)                                  \
-    {                                                                   \
-        _mm_store_##INTRIN_TYPE(arr.data(), b.m);                       \
-        return *this;                                                   \
-    }
-
-#define OP_VEC_EXPRS(OP, NAME, INTRIN_TYPE)                             \
-    return Vec(_mm_##NAME##_##INTRIN_TYPE(m, v.m));
-
-#define OP_VEC_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                      \
-    m = _mm_##NAME##_##INTRIN_TYPE(m, v.m);                             \
-    return *this;
-
-#define OP_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                          \
-    auto vv = _mm_set1_##INTRIN_TYPE(v);                                \
-    return Vec(_mm_##NAME##_##INTRIN_TYPE(m, vv));
-
-#define OP_SCALAR_ASSIGN_EXPRS(OP, NAME, INTRIN_TYPE)                   \
-    auto vv = _mm_set1_##INTRIN_TYPE(v);                                \
-    m = _mm_##NAME##_##INTRIN_TYPE(m, vv);                              \
-    return *this;
-
-#define OP_FRIEND_SCALAR_EXPRS(OP, NAME, INTRIN_TYPE)                   \
-    auto vv = _mm_set1_##INTRIN_TYPE(s);                                \
-    return Vec(_mm_##NAME##_##INTRIN_TYPE(vv, v.m));
-
-template <typename Vec, typename ...Ts>
-static inline Vec shuffle_impl(const Vec& v, Ts ...args)
-{
-    static_assert(sizeof...(Ts) == Vec::Size);
-
-#if defined(YAVL_X86_AVX)
-    __m128i i;
-    if constexpr (sizeof...(args) == 4)
-        i = _mm_setr_epi32(args...);
-    else if constexpr (sizeof...(args) == 3)
-        i = _mm_setr_epi32(args..., 0);
-    else if constexpr (sizeof...(args) == 2) {
-        i = _mm_setr_epi32(args..., 0, 0);
-        i = _mm_shuffle_epi32(i, 0b11011100);
-    }
-
-    if constexpr (std::is_floating_point_v<typename Vec::Scalar>) {
-        if constexpr (sizeof...(args) > 2)
-            return Vec(_mm_permutevar_ps(v.m, i));
-        else
-            return Vec(_mm_permutevar_pd(v.m, _mm_slli_epi64(i, 1)));
-    }
-    else {
-        return Vec(0);
-    }
-#else
-    MISC_BASE_SHUFFLE_EXPRS
-#endif
-}
-
-#define MISC_SHUFFLE_EXPRS                                              \
-    {                                                                   \
-        return Vec(shuffle_impl(*this, args...));                           \
-    }
-
-#define MATH_ABS_EXPRS                                                  \
+#define MATH_ABS_EXPRS(BITS, INTRIN_TYPE)                               \
     {                                                                   \
         /* Bitwise not with -0.f get the 0x7fff mask, bitwise and set */\
         /* the sign bit to zero hence abs for the floating point */     \
-        return Vec(_mm_andnot_ps(_mm_set1_ps(-0.f), m));                \
+        return Vec(_mm##BITS##_andnot_##INTRIN_TYPE(_mm##BITS##_set1_##INTRIN_TYPE(-0.f), m)); \
     }
 
 #define MATH_RCP_EXPRS                                                  \
@@ -329,10 +247,10 @@ struct alignas(16) Vec<float, 4> {
     };
 
     // Ctors
-    YAVL_VECTORIZED_CTOR(ps, __m128)
+    YAVL_VECTORIZED_CTOR(, ps, __m128)
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(ps, ps)
+    YAVL_DEFINE_BASIC_OP(, ps, ps)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -372,7 +290,7 @@ struct alignas(16) Vec<float, 4> {
         return _mm_cvtss_f32(t2);                                       \
     }
 
-    YAVL_DEFINE_MATH_FUNCS
+    YAVL_DEFINE_MATH_FUNCS(, ps)
 
 #undef MATH_SUM_EXPRS
 };
@@ -394,10 +312,10 @@ struct alignas(16) Vec<float, 3> {
     };
 
     // Ctors
-    YAVL_VECTORIZED_CTOR(ps, __m128)
+    YAVL_VECTORIZED_CTOR(, ps, __m128)
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(ps, ps)
+    YAVL_DEFINE_BASIC_OP(, ps, ps)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -446,7 +364,7 @@ struct alignas(16) Vec<float, 3> {
         return x + y + z;                                               \
     }
 
-    YAVL_DEFINE_MATH_FUNCS
+    YAVL_DEFINE_MATH_FUNCS(, ps)
 
 #undef MATH_SUM_EXPRS
 };
@@ -468,10 +386,10 @@ struct alignas(16) Vec<double, 2> {
     };
 
     // Ctors
-    YAVL_VECTORIZED_CTOR(pd, __m128d)
+    YAVL_VECTORIZED_CTOR(, pd, __m128d)
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(pd, pd)
+    YAVL_DEFINE_BASIC_OP(, pd, pd)
 
     // Misc funcs
 #if defined(YAVL_X86_AVX)
@@ -516,10 +434,16 @@ struct alignas(16) Vec<double, 2> {
         return x + y;                                                   \
     }
 
-    YAVL_DEFINE_MATH_FUNCS
+    YAVL_DEFINE_MATH_FUNCS(, pd)
 
 #undef MATH_SUM_EXPRS
 };
+
+#undef MATH_ABS_EXPRS
+#define MATH_ABS_EXPRS(BITS, INTRIN_TYPE)                               \
+    {                                                                   \
+        return Vec(_mm##BITS##_abs_##INTRIN_TYPE(m));                   \
+    }
 
 template <typename I>
 struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
@@ -538,10 +462,10 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
     };
 
     // Ctors
-    YAVL_VECTORIZED_CTOR(epi32, __m128i)
+    YAVL_VECTORIZED_CTOR(, epi32, __m128i)
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(epi32, si128)
+    YAVL_DEFINE_BASIC_OP(, epi32, si128)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -567,7 +491,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
         return _mm_cvtsi128_si32(t2);                                   \
     }
 
-    YAVL_DEFINE_MATH_COMMON_FUNCS
+    YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32)
 
 #undef MATH_SUM_EXPRS
 };
@@ -589,10 +513,10 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
     };
 
     // Ctors
-    YAVL_VECTORIZED_CTOR(epi32, __m128i);
+    YAVL_VECTORIZED_CTOR(, epi32, __m128i);
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(epi32, si128)
+    YAVL_DEFINE_BASIC_OP(, epi32, si128)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -616,7 +540,7 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
         return x + y + z;                                               \
     }
 
-    YAVL_DEFINE_MATH_COMMON_FUNCS
+    YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32)
 
 #undef MATH_SUM_EXPRS
 };
@@ -638,10 +562,10 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
     };
 
     // Ctors
-    YAVL_VECTORIZED_CTOR(epi64, __m128i);
+    YAVL_VECTORIZED_CTOR(, epi64, __m128i);
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(epi32, si128)
+    YAVL_DEFINE_BASIC_OP(, epi32, si128)
 
     // Misc funcs
     template <int I0, int I1>
@@ -667,19 +591,10 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
         return x + y;                                                   \
     }
 
-    YAVL_DEFINE_MATH_COMMON_FUNCS
+    YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32)
 
 #undef MATH_SUM_EXPRS
 };
-
-#undef OP_VEC_EXPRS
-#undef OP_VEC_ASSIGN_EXPRS
-#undef OP_SCALAR_EXPRS
-#undef OP_SCALAR_ASSING_EXPRS
-#undef OP_FRIEND_SCALAR_EXPRS
-#undef COPY_ASSIGN_EXPRS
-
-#undef MISC_SHUFFLE_EXPRS
 
 #undef MATH_ABS_EXPRS
 #undef MATH_RCP_EXPRS
@@ -690,6 +605,4 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
 #undef MATH_LERP_SCALAR_EXPRS
 #undef MATH_LERP_VEC_EXPRS
 
-#undef YAVL_VECTORIZED_CTOR
-#undef YAVL_VEC_ALIAS_VECTORIZED
 }
