@@ -7,12 +7,13 @@
 #include <stdint.h>
 #include <type_traits>
 
-#include <yavl/intrin.h>
+//#include <yavl/intrin.h>
 #include <yavl/traits.h>
-#include <yavl/utils.h>
 
 namespace yavl
 {
+
+struct empty_t {};
 
 #define YAVL_VEC_ALIAS(TYPE, N, INTRIN_N)                               \
     using Scalar = std::decay_t<TYPE>;                                  \
