@@ -52,12 +52,16 @@ namespace yavl
     YAVL_DEFINE_SCALAR_OP(BITS, OP, NAME, INTRIN_TYPE)                  \
     YAVL_DEFINE_FRIEND_OP(BITS, OP, NAME, INTRIN_TYPE)
 
-#define YAVL_DEFINE_BASIC_ARITHMIC_OP(BITS, INTRIN_TYPE)                \
+#define YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, INTRIN_TYPE)             \
     YAVL_DEFINE_OP(BITS, +, add, INTRIN_TYPE)                           \
     YAVL_DEFINE_OP(BITS, -, sub, INTRIN_TYPE)                           \
     YAVL_DEFINE_OP(BITS, *, mul, INTRIN_TYPE)                           \
     YAVL_DEFINE_OP(BITS, /, div, INTRIN_TYPE)
 
+#define YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, IT)                     \
+    YAVL_DEFINE_OP(BITS, +, add, IT)                                    \
+    YAVL_DEFINE_OP(BITS, -, sub, IT)                                    \
+    YAVL_DEFINE_OP(BITS, *, mul, IT)
 
 #define YAVL_DEFINE_VEC_INDEX_OP                                        \
     Scalar& operator [](const uint32_t i) {                             \
@@ -78,9 +82,27 @@ namespace yavl
     YAVL_DEFINE_VEC_INDEX_OP                                            \
     YAVL_DEFINE_VEC_COPY_ASSIGN_OP(BITS, INTRIN_TYPE)
 
-#define YAVL_DEFINE_BASIC_OP(BITS, INTRIN_TYPE, CMD_SUFFIX)             \
+#define YAVL_DEFINE_BASIC_FP_OP(BITS, INTRIN_TYPE, CMD_SUFFIX)          \
     YAVL_DEFINE_BASIC_MISC_OP(BITS, CMD_SUFFIX)                         \
-    YAVL_DEFINE_BASIC_ARITHMIC_OP(BITS, INTRIN_TYPE)
+    YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, INTRIN_TYPE)
+
+#define YAVL_DEFINE_BASIC_INT_OP(BITS, IT, CMD_SUFFIX)                  \
+    YAVL_DEFINE_BASIC_MISC_OP(BITS, CMD_SUFFIX)                         \
+    YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, IT)
+
+template <typename Vec, typename ...Ts>
+inline Vec base_shuffle_impl(const Vec& v, Ts ...args) {
+    static_assert(sizeof...(args) == Vec::Size);
+    Vec tmp;
+    ([&] <std::size_t... Is>(std::index_sequence<Is...>, auto&&... as) {
+        auto impl = [&] <typename A>(std::size_t i, A&& a) {
+            tmp[i] = v.arr[static_cast<uint32_t>(a)];
+        };
+        (impl(Is, std::forward<decltype(as)>(as)), ...);
+    }
+    (std::index_sequence_for<Ts...>{}, std::forward<Ts>(args)...));
+    return tmp;
+}
 
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Vec {
@@ -160,7 +182,7 @@ struct Vec {
         tmp[i] = s OP v[i];                                             \
     return tmp;
 
-    YAVL_DEFINE_BASIC_OP( , , )
+    YAVL_DEFINE_BASIC_FP_OP( , , )
 
 #undef COPY_ASSIGN_EXPRS
 #undef OP_VEC_EXPRS
@@ -175,24 +197,8 @@ struct Vec {
         requires (std::default_initializable<Ts> && ...) &&             \
             (std::convertible_to<Ts, Scalar> && ...)                    \
     inline Vec shuffle(Ts... args) const {                              \
-        MISC_SHUFFLE_EXPRS                                              \
+        return base_shuffle_impl(*this, args...);                       \
     }
-
-#define MISC_BASE_SHUFFLE_EXPRS                                         \
-    {                                                                   \
-        static_assert(sizeof...(args) == Size);                         \
-        Vec tmp;                                                        \
-        ([&] <std::size_t... Is>(std::index_sequence<Is...>, auto&&... as) { \
-            auto impl = [&] <typename A>(std::size_t i, A&& a) {        \
-                tmp[i] = arr[static_cast<uint32_t>(a)];                 \
-            };                                                          \
-            (impl(Is, std::forward<decltype(as)>(as)), ...);            \
-        }                                                               \
-        (std::index_sequence_for<Ts...>{}, std::forward<Ts>(args)...)); \
-        return tmp;                                                     \
-    }
-
-#define MISC_SHUFFLE_EXPRS MISC_BASE_SHUFFLE_EXPRS
 
 #define YAVL_DEFINE_MISC_FUNCS                                          \
     MISC_SHUFFLE_FUNC
@@ -208,8 +214,6 @@ struct Vec {
     }
 
     YAVL_DEFINE_MISC_FUNCS
-
-#undef MISC_SHUFFLE_EXPRS
 
     // Geometry
 #define GEO_DOT_FUNC                                                    \
@@ -353,20 +357,20 @@ struct Vec {
     }
 */
 
-#define MATH_LERP_FUNC                                                  \
+#define MATH_LERP_FUNC(BITS, IT)                                        \
     inline auto lerp(const Vec& b, const Scalar t) const {              \
-        MATH_LERP_SCALAR_EXPRS                                          \
+        MATH_LERP_SCALAR_EXPRS(BITS, IT)                                \
     }                                                                   \
     inline auto lerp(const Vec& b, const Vec& t) const {                \
-        MATH_LERP_VEC_EXPRS                                             \
+        MATH_LERP_VEC_EXPRS(BITS, IT)                                   \
     }
 
-#define MATH_LERP_SCALAR_EXPRS                                          \
+#define MATH_LERP_SCALAR_EXPRS(BITS, IT)                                \
     {                                                                   \
         return this->operator*(1 - t) + b * t;                          \
     }
 
-#define MATH_LERP_VEC_EXPRS MATH_LERP_SCALAR_EXPRS
+#define MATH_LERP_VEC_EXPRS(BITS, IT) MATH_LERP_SCALAR_EXPRS(BITS, IT)
 
 #define YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, INTRIN_TYPE)                \
     MATH_LENGTH_SQUARED_FUNC                                            \
@@ -380,7 +384,7 @@ struct Vec {
     MATH_RCP_FUNC                                                       \
     MATH_SQRT_FUNC                                                      \
     MATH_RSQRT_FUNC                                                     \
-    MATH_LERP_FUNC
+    MATH_LERP_FUNC(BITS, INTRIN_TYPE)
 
 #define YAVL_DEFINE_MATH_FUNCS(BITS, INTRIN_TYPE)                       \
     YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, INTRIN_TYPE)                    \

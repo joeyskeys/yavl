@@ -53,7 +53,7 @@ static inline __m128 rcp_ps_impl(const __m128 m) {
 #endif
 }
 
-static inline __m128 rcp_pd_impl(const __m128 m) {
+static inline __m128d rcp_pd_impl(const __m128d m) {
     // Copied from enoki
 #if defined(YAVL_X86_AVX512ER) || defined(YAVL_X86_AVX512VL)
     __m128d r;
@@ -183,28 +183,20 @@ static inline __m128d rsqrt_pd_impl(const __m128d m) {
 
 #define MATH_RCP_EXPRS                                                  \
     {                                                                   \
-        if constexpr (Vec::Size > 2)                                    \
-            return Vec(rcp_ps_impl(m));                                 \
-        else                                                            \
-            return Vec(rcp_pd_impl(m));                                 \
+        return Vec(rcp_ps_impl(m));                                     \
     }
 
 #define MATH_SQRT_EXPRS                                                 \
     {                                                                   \
-        if constexpr (Vec::Size > 2)                                    \
-            return Vec(_mm_sqrt_ps(m));                                 \
-        else                                                            \
-            return Vec(_mm_sqrt_pd(m));                                 \
+        return Vec(_mm_sqrt_ps(m));                                     \
     }
 
 #define MATH_RSQRT_EXPRS                                                \
     {                                                                   \
-        if constexpr (Vec::Size > 2)                                    \
-            return Vec(rsqrt_ps_impl(m));                               \
-        else                                                            \
-            return Vec(rsqrt_pd_impl(m));                               \
+        return Vec(rsqrt_ps_impl(m));                                   \
     }
 
+/*
 #if defined(YAVL_X86_FMA)
 #define MULADD(RET, A, B, C) RET = _mm_fmadd_ps(A, B, C)
 #define MULSUB(RET, A, B, C) RET = _mm_fmsub_ps(A, B, C)
@@ -229,6 +221,7 @@ static inline __m128d rsqrt_pd_impl(const __m128d m) {
         MULADD(auto ret, vomt.m, m, t1);                                \
         return Vec(ret);                                                \
     }
+*/
 
 template <>
 struct alignas(16) Vec<float, 4> {
@@ -250,7 +243,7 @@ struct alignas(16) Vec<float, 4> {
     YAVL_VECTORIZED_CTOR(, ps, __m128)
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(, ps, ps)
+    YAVL_DEFINE_BASIC_FP_OP(, ps, ps)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -262,15 +255,7 @@ struct alignas(16) Vec<float, 4> {
 #endif
     }
 
-#define MISC_SHUFFLE_AVX_EXPRS                                          \
-    {                                                                   \
-        __m128i i = _mm_setr_epi32(args...);                            \
-        return _mm_permutevar_ps(m, i);                                 \
-    }
-
     YAVL_DEFINE_MISC_FUNCS
-
-#undef MISC_SHUFFLE_AVX_EXPRS
 
     // Geo funcs
 #define GEO_DOT_EXPRS                                                   \
@@ -315,7 +300,7 @@ struct alignas(16) Vec<float, 3> {
     YAVL_VECTORIZED_CTOR(, ps, __m128)
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(, ps, ps)
+    YAVL_DEFINE_BASIC_FP_OP(, ps, ps)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -327,15 +312,7 @@ struct alignas(16) Vec<float, 3> {
 #endif
     }
 
-#define MISC_SHUFFLE_AVX_EXPRS                                          \
-    {                                                                   \
-        __m128i i = _mm_setr_epi32(args..., 0);                         \
-        return _mm_permutevar_ps(m, i);                                 \
-    }
-
     YAVL_DEFINE_MISC_FUNCS
-
-#undef MISC_SHUFFLE_AVX_EXPRS
 
     // Geo funcs
 #define GEO_DOT_EXPRS                                                   \
@@ -347,13 +324,7 @@ struct alignas(16) Vec<float, 3> {
 
 #undef GEO_DOT_EXPRS
 
-    inline auto cross(const Vec& b) const {
-        auto t1 = shuffle<1, 2, 0>();
-        auto t2 = b.shuffle<2, 0, 1>();
-        auto t3 = shuffle<2, 0, 1>() * b.shuffle<1, 2, 0>();
-        MULSUB(auto ret, t1.m, t2.m, t3.m);
-        return Vec(ret);
-    }
+    YAVL_DEFINE_CROSS_FUNC(, ps)
 
     // Math funcs
 
@@ -368,6 +339,24 @@ struct alignas(16) Vec<float, 3> {
 
 #undef MATH_SUM_EXPRS
 };
+
+#undef MATH_RCP_EXPRS
+#define MATH_RCP_EXPRS                                                  \
+    {                                                                   \
+        return Vec(rcp_pd_impl(m));                                     \
+    }
+
+#undef MATH_SQRT_EXPRS
+#define MATH_SQRT_EXPRS                                                 \
+    {                                                                   \
+        return Vec(_mm_sqrt_pd(m));                                     \
+    }
+
+#undef MATH_RSQRT_EXPRS
+#define MATH_RSQRT_EXPRS                                                \
+    {                                                                   \
+        return Vec(rsqrt_pd_impl(m));                                   \
+    }
 
 template <>
 struct alignas(16) Vec<double, 2> {
@@ -389,7 +378,7 @@ struct alignas(16) Vec<double, 2> {
     YAVL_VECTORIZED_CTOR(, pd, __m128d)
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(, pd, pd)
+    YAVL_DEFINE_BASIC_FP_OP(, pd, pd)
 
     // Misc funcs
 #if defined(YAVL_X86_AVX)
@@ -403,15 +392,7 @@ struct alignas(16) Vec<double, 2> {
         return SHUFFLE_PD(m, (I1 << 1) | I0);
     }
 
-#define MISC_SHUFFLE_AVX_EXPRS                                          \
-    {                                                                   \
-        __m128i i = _mm_setr_epi64(args...);                            \
-        return _mm_permutevar_pd(m, _mm_slli_epi(i, 1));                \
-    }
-
     YAVL_DEFINE_MISC_FUNCS
-
-#undef MISC_SHUFFLE_AVX_EXPRS
 
     // Geo funcs
 #define GEO_DOT_EXPRS                                                   \
@@ -465,7 +446,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
     YAVL_VECTORIZED_CTOR(, epi32, __m128i)
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(, epi32, si128)
+    YAVL_DEFINE_BASIC_INT_OP(, epi32, si128)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -473,15 +454,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
         return Vec(_mm_shuffle_epi32(m, _MM_SHUFFLE(I3, I2, I1, I0)));
     }
 
-#define MISC_SHUFFLE_AVX_EXPRS                                          \
-    {                                                                   \
-        __m128i i = _mm_setr_epi32(args...);                            \
-        return _mm_castps_si128(_mm_permutevar_ps(_mm_castsi128_ps(m), i)); \
-    }
-
     YAVL_DEFINE_MISC_FUNCS
-
-#undef MISC_SHUFFLE_AVX_EXPRS
 
 // Math funcs
 #define MATH_SUM_EXPRS                                                  \
@@ -516,7 +489,7 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
     YAVL_VECTORIZED_CTOR(, epi32, __m128i);
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(, epi32, si128)
+    YAVL_DEFINE_BASIC_INT_OP(, epi32, si128)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -524,15 +497,7 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
         return Vec(_mm_shuffle_epi32(m, _MM_SHUFFLE(0, I2, I1, I0)));
     }
 
-#define MISC_SHUFFLE_AVX_EXPRS                                          \
-    {                                                                   \
-        __m128i i = _mm_setr_epi32(args...);                            \
-        return _mm_castps_si128(_mm_permutevar_ps(_mm_castsi128_ps(m), i)); \
-    }
-
     YAVL_DEFINE_MISC_FUNCS
-
-#undef MISC_SHUFFLE_AVX_EXPRS
 
     // Math funcs
 #define MATH_SUM_EXPRS                                                  \
@@ -565,7 +530,7 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
     YAVL_VECTORIZED_CTOR(, epi64, __m128i);
 
     // Operators
-    YAVL_DEFINE_BASIC_OP(, epi32, si128)
+    YAVL_DEFINE_BASIC_INT_OP(, epi32, si128)
 
     // Misc funcs
     template <int I0, int I1>
@@ -574,16 +539,7 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
             _MM_SHUFFLE(I1 * 2 + 1, I1 * 2, I0 * 2 + 1, I0 * 2)));
     }
 
-#define MISC_SHUFFLE_AVX_EXPRS                                          \
-    {                                                                   \
-        __m128i i = _mm_setr_epi32(args..., 0, 0);                      \
-        i = _mm_shuffle_epi32(i, 0b01010000);                           \
-        return _mm_castpd_si128(_mm_permutevar_pd(_mm_castsi128_pd(m), _mm_slli_epi64(i, 1))); \
-    }
-
     YAVL_DEFINE_MISC_FUNCS
-
-#undef MISC_SHUFFLE_AVX_EXPRS
 
     // Math funcs
 #define MATH_SUM_EXPRS                                                  \
@@ -600,9 +556,5 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
 #undef MATH_RCP_EXPRS
 #undef MATH_SQRT_EXPRS
 #undef MATH_RSQRT_EXPRS
-#undef MULADD
-#undef MULSUB
-#undef MATH_LERP_SCALAR_EXPRS
-#undef MATH_LERP_VEC_EXPRS
 
 }

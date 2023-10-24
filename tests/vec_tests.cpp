@@ -65,13 +65,19 @@ TEMPLATE_PRODUCT_TEST_CASE("Vec tests", "[vec]", (Vec2, Vec3, Vec4), (float, dou
     TestType vec0;
     TestType vec1{1};
     TestType vec2{2};
-    TestType vec3;
-    if constexpr (vec0.Size == 2)
+    TestType vec3, vec4;
+    if constexpr (vec0.Size == 2) {
         vec3 = {1, 2};
-    else if constexpr (vec0.Size == 3)
+        vec4 = {5, 6};
+    }
+    else if constexpr (vec0.Size == 3) {
         vec3 = {1, 2, 3};
-    else if constexpr (vec0.Size == 4)
+        vec4 = {5, 6, 7};
+    }
+    else if constexpr (vec0.Size == 4) {
         vec3 = {1, 2, 3, 4};
+        vec4 = {5, 6, 7, 8};
+    }
     else
         static_assert(vec0.Size < 5, "Should not reach here");
 
@@ -90,47 +96,51 @@ TEMPLATE_PRODUCT_TEST_CASE("Vec tests", "[vec]", (Vec2, Vec3, Vec4), (float, dou
     }
 
     SECTION("Operator tests") {
-        auto vec4 = vec1 + vec2;
-        PROPER_EQUAL(vec4.x, 3, vec4);
-        PROPER_EQUAL(vec4.y, 3, vec4);
+        auto vec5 = vec1 + vec2;
+        PROPER_EQUAL(vec5.x, 3, vec5);
+        PROPER_EQUAL(vec5.y, 3, vec5);
 
-        vec4 = vec2 - vec1;
-        PROPER_EQUAL(vec4.x, 1, vec4);
-        PROPER_EQUAL(vec4.y, 1, vec4);
+        vec5 = vec2 - vec1;
+        PROPER_EQUAL(vec5.x, 1, vec5);
+        PROPER_EQUAL(vec5.y, 1, vec5);
 
-        vec4 = vec2 * vec3;
-        PROPER_EQUAL(vec4.x, 2, vec4);
-        PROPER_EQUAL(vec4.y, 4, vec4);
+        vec5 = vec2 * vec3;
+        PROPER_EQUAL(vec5.x, 2, vec5);
+        PROPER_EQUAL(vec5.y, 4, vec5);
+        if constexpr (vec5.Size > 2)
+            PROPER_EQUAL(vec5.z, 6, vec5);
+        if constexpr (vec5.Size > 3)
+            PROPER_EQUAL(vec5.w, 8, vec5);
 
-        vec4 = vec3 / vec2;
-        if constexpr (std::is_floating_point_v<typename decltype(vec4)::Scalar>) {
-            REQUIRE(vec4.x == Approx(0.5));
-            REQUIRE(vec4.y == Approx(1));
+        vec5 = vec3 / vec2;
+        if constexpr (std::is_floating_point_v<typename decltype(vec5)::Scalar>) {
+            REQUIRE(vec5.x == Approx(0.5));
+            REQUIRE(vec5.y == Approx(1));
         }
         else {
-            REQUIRE(vec4.x == 0);
-            REQUIRE(vec4.y == 1);
+            REQUIRE(vec5.x == 0);
+            REQUIRE(vec5.y == 1);
         }
     }
 
     SECTION("Misc tests") {
         if constexpr (vec3.Size == 2) {
-            auto vec4 = vec3.template shuffle<1, 0>();
-            check_vec_components(vec4, 2, 1);
-            auto vec5 = vec3.shuffle(1, 0);
+            auto vec5 = vec3.template shuffle<1, 0>();
             check_vec_components(vec5, 2, 1);
+            auto vec6 = vec4.shuffle(1, 0);
+            check_vec_components(vec6, 6, 5);
         }
         else if constexpr (vec3.Size == 3) {
-            auto vec4 = vec3.template shuffle<2, 1, 0>();
-            check_vec_components(vec4, 3, 2, 1);
-            auto vec5 = vec3.shuffle(2, 1, 0);
+            auto vec5 = vec3.template shuffle<2, 1, 0>();
             check_vec_components(vec5, 3, 2, 1);
+            auto vec6 = vec4.shuffle(2, 1, 0);
+            check_vec_components(vec6, 7, 6, 5);
         }
         else if constexpr (vec3.Size == 4) {
-            auto vec4 = vec3.template shuffle<3, 2, 1, 0>();
-            check_vec_components(vec4, 4, 3, 2, 1);
-            auto vec5 = vec3.shuffle(3, 2, 1, 0);
+            auto vec5 = vec3.template shuffle<3, 2, 1, 0>();
             check_vec_components(vec5, 4, 3, 2, 1);
+            auto vec6 = vec4.shuffle(3, 2, 1, 0);
+            check_vec_components(vec6, 8, 7, 6, 5);
         }
     }
 
@@ -168,8 +178,8 @@ TEMPLATE_PRODUCT_TEST_CASE("Vec tests", "[vec]", (Vec2, Vec3, Vec4), (float, dou
                 auto rcp = vec3.rcp();
                 auto sqrt = vec3.sqrt();
                 auto rsqrt = vec3.rsqrt();
-                TestType vec4{4};
-                auto lerp = vec2.lerp(vec4, 0.5);
+                TestType vec5{4};
+                auto lerp = vec2.lerp(vec5, 0.5);
                 REQUIRE(rcp.x == Approx(1));
                 REQUIRE(rcp.y == Approx(0.5));
                 REQUIRE(sqrt.x == Approx(1));

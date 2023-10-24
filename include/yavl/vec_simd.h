@@ -48,6 +48,31 @@
     auto vv = _mm##BITS##_set1_##INTRIN_TYPE(s);                        \
     return Vec(_mm##BITS##_##NAME##_##INTRIN_TYPE(vv, v.m));
 
+#if defined(YAVL_X86_FMA)
+#define MULADD(BITS, IT, A, B, C) _mm##BITS##_fmadd_##IT(A, B, C)
+#define MULSUB(BITS, IT, A, B, C) _mm##BITS##_fmsub_##IT(A, B, C)
+#else
+#define MULADD(BITS, IT, A, B, C) _mm##BITS##_add_##IT(_mm##BITS##_mul_##IT(A, B), C)
+#define MULSUB(BITS, IT, A, B, C) _mm##BITS##_sub_##IT(_mm##BITS##_mul_##IT(A, B), C)
+#endif
+
+#define MATH_LERP_SCALAR_EXPRS(BITS, IT)                                \
+    {                                                                   \
+        auto vomt = _mm##BITS##_set1_##IT(1 - t);                       \
+        auto vt = _mm##BITS##_set1_##IT(t);                             \
+        auto t1 = _mm##BITS##_mul_##IT(b.m, vt);                        \
+        auto ret = MULADD(BITS, IT, vomt, m, t1);                       \
+        return Vec(ret);                                                \
+    }
+
+#define MATH_LERP_VEC_EXPRS(BITS, IT)                                   \
+    {                                                                   \
+        Vec vomt = 1 - t;                                               \
+        auto t1 = _mm##BITS##_mul_##IT(b.m, t.m);                       \
+        auto ret = MULADD(BITS, IT, vomt.m, m, t1);                     \
+        return Vec(ret);                                                \
+    }
+
 namespace detail
 {
     template <typename Vec, typename ...Ts>
@@ -67,8 +92,12 @@ namespace detail
             }
 
             if constexpr (std::is_floating_point_v<typename Vec::Scalar>) {
-                if constexpr (sizeof...(args) > 2)
+                if constexpr (sizeof...(args) > 2 && yavl::is_float_v<typename Vec::Scalar>)
                     return Vec(_mm_permutevar_ps(v.m, i));
+                else if constexpr (sizeof...(args) > 2) {
+                    // _mm256_permuatevar_pd don't work like expected
+                    base_shuffle_impl(v, args...);
+                }
                 else
                     return Vec(_mm_permutevar_pd(v.m, _mm_slli_epi64(i, 1)));
             }
@@ -80,7 +109,7 @@ namespace detail
                         _mm_slli_epi64(i, 1))));
             }
         #else
-            MISC_BASE_SHUFFLE_EXPRS
+            base_shuffle_impl(v, args...);
         #endif
     }
 }
@@ -88,6 +117,15 @@ namespace detail
 #define MISC_SHUFFLE_EXPRS                                              \
     {                                                                   \
         return Vec(detail::shuffle_impl(*this, args...));               \
+    }
+
+#define YAVL_DEFINE_CROSS_FUNC(BITS, IT)                                \
+    inline auto cross(const Vec& b) const {                             \
+        auto t1 = shuffle<1, 2, 0>();                                   \
+        auto t2 = b.shuffle<2, 0, 1>();                                 \
+        auto t3 = shuffle<2, 0, 1>() * b.shuffle<1, 2, 0>();            \
+        auto ret = MULSUB(BITS, IT, t1.m, t2.m, t3.m);                  \
+        return Vec(ret);                                                \
     }
 
 #if defined(YAVL_X86_SSE42)
@@ -193,3 +231,6 @@ using _Vec4u = _Vec4<uint32_t>;
 }
 
 #undef MISC_SHUFFLE_EXPRS
+
+#undef MATH_LERP_SCALAR_EXPRS
+#undef MATH_LERP_VEC_EXPRS
