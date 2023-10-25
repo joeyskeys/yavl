@@ -87,9 +87,9 @@ static inline __m256d rsqrt_pd_impl(const __m256d m) {
     #endif
 }
 
-#define MATH_ABS_EXPRS(BITS, INTRIN_TYPE)                               \
+#define MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
     {                                                                   \
-        return Vec(_mm##BITS##_andnot_##INTRIN_TYPE(_mm##BITS##_set1_##INTRIN_TYPE(-0.), m)); \
+        return Vec(_mm##BITS##_andnot_##IT1(_mm##BITS##_set1_##IT2(-0.), m)); \
     }
 
 #define MATH_RCP_EXPRS                                                  \
@@ -112,14 +112,7 @@ struct alignas(32) Vec<double, 4> {
     YAVL_VEC_ALIAS_VECTORIZED(double, 4, 4)
 
     union {
-        struct {
-            Scalar x, y, z, w;
-        };
-        struct {
-            Scalar r, g, b, a;
-        };
-
-        std::array<Scalar, Size> arr;
+        YAVL_VEC4_MEMBERS
         __m256d m;
     };
 
@@ -156,7 +149,7 @@ struct alignas(32) Vec<double, 4> {
         return _mm256_cvtsd_f64(t3);                                    \
     }
 
-    YAVL_DEFINE_MATH_FUNCS(256, pd)
+    YAVL_DEFINE_MATH_FUNCS(256, pd, pd)
 
     #undef MATH_SUM_EXPRS
 };
@@ -166,14 +159,7 @@ struct alignas(32) Vec<double, 3> {
     YAVL_VEC_ALIAS_VECTORIZED(double, 3, 4)
 
     union {
-        struct {
-            Scalar x, y, z;
-        };
-        struct {
-            Scalar r, g, b;
-        };
-
-        std::array<Scalar, Size> arr;
+        YAVL_VEC3_MEMBERS
         __m256d m;
     };
 
@@ -209,9 +195,14 @@ struct alignas(32) Vec<double, 3> {
         return x + y + z;                                               \
     }
 
-    YAVL_DEFINE_MATH_FUNCS(256, pd)
+    YAVL_DEFINE_MATH_FUNCS(256, pd, pd)
 
     #undef MATH_SUM_EXPRS
 };
+
+#undef MATH_ABS_EXPRS
+#undef MATH_RCP_EXPRS
+#undef MATH_SQRT_EXPRS
+#undef MATH_RSQRT_EXPRS
 
 }

@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <type_traits>
 
-//#include <yavl/intrin.h>
 #include <yavl/traits.h>
 
 namespace yavl
@@ -269,12 +268,12 @@ struct Vec {
         return *this * rcp;                                             \
     }
 
-#define MATH_ABS_FUNC(BITS, INTRIN_TYPE)                                \
+#define MATH_ABS_FUNC(BITS, IT1, IT2)                                   \
     inline auto abs() const {                                           \
-        MATH_ABS_EXPRS(BITS, INTRIN_TYPE)                               \
+        MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
     }
 
-#define MATH_ABS_EXPRS(BITS, INTRIN_TYPE)                               \
+#define MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
     {                                                                   \
         Vec tmp;                                                        \
         for (int i = 0; i < Size; ++i)                                  \
@@ -373,10 +372,10 @@ struct Vec {
 
 #define MATH_LERP_VEC_EXPRS(BITS, IT) MATH_LERP_SCALAR_EXPRS(BITS, IT)
 
-#define YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, INTRIN_TYPE)                \
+#define YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, IT1, IT2)                   \
     MATH_LENGTH_SQUARED_FUNC                                            \
     MATH_LENGTH_FUNC                                                    \
-    MATH_ABS_FUNC(BITS, INTRIN_TYPE)                                    \
+    MATH_ABS_FUNC(BITS, IT1, IT2)                                       \
     MATH_SUM_FUNC                                                       \
     MATH_SQUARE_FUNC
 
@@ -387,11 +386,11 @@ struct Vec {
     MATH_RSQRT_FUNC                                                     \
     MATH_LERP_FUNC(BITS, INTRIN_TYPE)
 
-#define YAVL_DEFINE_MATH_FUNCS(BITS, INTRIN_TYPE)                       \
-    YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, INTRIN_TYPE)                    \
-    YAVL_DEFINE_MATH_FP_FUNCS(BITS, INTRIN_TYPE)
+#define YAVL_DEFINE_MATH_FUNCS(BITS, IT1, IT2)                          \
+    YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, IT1, IT2)                       \
+    YAVL_DEFINE_MATH_FP_FUNCS(BITS, IT1)
 
-    YAVL_DEFINE_MATH_FUNCS(, )
+    YAVL_DEFINE_MATH_FUNCS(, ,)
 
 #undef MATH_LENGTH_SQUARED_EXPRS
 #undef MATH_LENGTH_EXPRS

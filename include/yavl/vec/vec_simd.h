@@ -1,6 +1,33 @@
 #pragma once
 
 // Common macros
+#define YAVL_VEC4_MEMBERS                                               \
+    struct {                                                            \
+        Scalar x, y, z, w;                                              \
+    };                                                                  \
+    struct {                                                            \
+        Scalar r, g, b, a;                                              \
+    };                                                                  \
+    std::array<Scalar, Size> arr;
+
+#define YAVL_VEC3_MEMBERS                                               \
+    struct {                                                            \
+        Scalar x, y, z;                                                 \
+    };                                                                  \
+    struct {                                                            \
+        Scalar r, g, b;                                                 \
+    };                                                                  \
+    std::array<Scalar, Size> arr;
+
+#define YAVL_VEC2_MEMBERS                                               \
+    struct {                                                            \
+        Scalar x, y;                                                    \
+    };                                                                  \
+    struct {                                                            \
+        Scalar r, g;                                                    \
+    };                                                                  \
+    std::array<Scalar, Size> arr;
+
 #define YAVL_VEC_ALIAS_VECTORIZED(TYPE, N, INTRIN_N)                    \
     YAVL_VEC_ALIAS(TYPE, N, INTRIN_N)                                   \
     static constexpr bool vectorized = true;
@@ -129,11 +156,15 @@ namespace detail
     }
 
 #if defined(YAVL_X86_SSE42)
-#   include <yavl/vec_sse42.h>
+#   include <yavl/vec/vec_sse42.h>
 #endif
 
 #if defined(YAVL_X86_AVX)
-#   include <yavl/vec_avx.h>
+#   include <yavl/vec/vec_avx.h>
+#endif
+
+#if defined(YAVL_X86_AVX2)
+#   include <yavl/vec/vec_avx2.h>
 #endif
 
 namespace yavl

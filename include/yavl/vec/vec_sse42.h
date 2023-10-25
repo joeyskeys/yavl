@@ -174,11 +174,11 @@ static inline __m128d rsqrt_pd_impl(const __m128d m) {
 #endif
 }
 
-#define MATH_ABS_EXPRS(BITS, INTRIN_TYPE)                               \
+#define MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
     {                                                                   \
         /* Bitwise not with -0.f get the 0x7fff mask, bitwise and set */\
         /* the sign bit to zero hence abs for the floating point */     \
-        return Vec(_mm##BITS##_andnot_##INTRIN_TYPE(_mm##BITS##_set1_##INTRIN_TYPE(-0.f), m)); \
+        return Vec(_mm##BITS##_andnot_##IT1(_mm##BITS##_set1_##IT2(-0.f), m)); \
     }
 
 #define MATH_RCP_EXPRS                                                  \
@@ -196,46 +196,12 @@ static inline __m128d rsqrt_pd_impl(const __m128d m) {
         return Vec(rsqrt_ps_impl(m));                                   \
     }
 
-/*
-#if defined(YAVL_X86_FMA)
-#define MULADD(RET, A, B, C) RET = _mm_fmadd_ps(A, B, C)
-#define MULSUB(RET, A, B, C) RET = _mm_fmsub_ps(A, B, C)
-#else
-#define MULADD(RET, A, B, C) RET = _mm_add_ps(_mm_mul_ps(A, B), C)
-#define MULSUB(RET, A, B, C) RET = _mm_sub_ps(_mm_mul_ps(A, B), C)
-#endif
-
-#define MATH_LERP_SCALAR_EXPRS                                          \
-    {                                                                   \
-        auto vomt = _mm_set1_ps(1 - t);                                 \
-        auto vt = _mm_set1_ps(t);                                       \
-        auto t1 = _mm_mul_ps(b.m, vt);                                  \
-        MULADD(auto ret, vomt, m, t1);                                  \
-        return Vec(ret);                                                \
-    }
-
-#define MATH_LERP_VEC_EXPRS                                             \
-    {                                                                   \
-        Vec vomt = 1 - t;                                               \
-        auto t1 = _mm_mul_ps(b.m, t.m);                                 \
-        MULADD(auto ret, vomt.m, m, t1);                                \
-        return Vec(ret);                                                \
-    }
-*/
-
 template <>
 struct alignas(16) Vec<float, 4> {
     YAVL_VEC_ALIAS_VECTORIZED(float, 4, 4)
 
     union {
-        struct {
-            Scalar x, y, z, w;
-        };
-        struct {
-            Scalar r, g, b, a;
-        };
-        
-        std::array<Scalar, Size> arr;
+        YAVL_VEC4_MEMBERS
         __m128 m;
     };
 
@@ -275,7 +241,7 @@ struct alignas(16) Vec<float, 4> {
         return _mm_cvtss_f32(t2);                                       \
     }
 
-    YAVL_DEFINE_MATH_FUNCS(, ps)
+    YAVL_DEFINE_MATH_FUNCS(, ps, ps)
 
 #undef MATH_SUM_EXPRS
 };
@@ -285,14 +251,7 @@ struct alignas(16) Vec<float, 3> {
     YAVL_VEC_ALIAS_VECTORIZED(float, 3, 4)
 
     union {
-        struct {
-            Scalar x, y, z;
-        };
-        struct {
-            Scalar r, g, b;
-        };
-
-        std::array<Scalar, Size> arr;
+        YAVL_VEC3_MEMBERS
         __m128 m;
     };
 
@@ -335,7 +294,7 @@ struct alignas(16) Vec<float, 3> {
         return x + y + z;                                               \
     }
 
-    YAVL_DEFINE_MATH_FUNCS(, ps)
+    YAVL_DEFINE_MATH_FUNCS(, ps, ps)
 
 #undef MATH_SUM_EXPRS
 };
@@ -363,14 +322,7 @@ struct alignas(16) Vec<double, 2> {
     YAVL_VEC_ALIAS_VECTORIZED(double, 2, 2)
 
     union {
-        struct {
-            Scalar x, y;
-        };
-        struct {
-            Scalar r, g;
-        };
-
-        std::array<Scalar, Size> arr;
+        YAVL_VEC2_MEMBERS
         __m128d m;
     };
 
@@ -415,15 +367,15 @@ struct alignas(16) Vec<double, 2> {
         return x + y;                                                   \
     }
 
-    YAVL_DEFINE_MATH_FUNCS(, pd)
+    YAVL_DEFINE_MATH_FUNCS(, pd, pd)
 
 #undef MATH_SUM_EXPRS
 };
 
 #undef MATH_ABS_EXPRS
-#define MATH_ABS_EXPRS(BITS, INTRIN_TYPE)                               \
+#define MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
     {                                                                   \
-        return Vec(_mm##BITS##_abs_##INTRIN_TYPE(m));                   \
+        return Vec(_mm##BITS##_abs_##IT1(m));                           \
     }
 
 template <typename I>
@@ -431,14 +383,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 4, 4)
 
     union {
-        struct {
-            Scalar x, y, z, w;
-        };
-        struct {
-            Scalar r, g, b, a;
-        };
-
-        std::array<Scalar, Size> arr;
+        YAVL_VEC4_MEMBERS
         __m128i m;
     };
 
@@ -464,7 +409,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
         return _mm_cvtsi128_si32(t2);                                   \
     }
 
-    YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32)
+    YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32, epi32)
 
 #undef MATH_SUM_EXPRS
 };
@@ -474,14 +419,7 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 3, 4)
 
     union {
-        struct {
-            Scalar x, y, z;
-        };
-        struct {
-            Scalar r, g, b;
-        };
-
-        std::array<Scalar, Size> arr;
+        YAVL_VEC3_MEMBERS
         __m128i m;
     };
 
@@ -505,7 +443,7 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
         return x + y + z;                                               \
     }
 
-    YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32)
+    YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32, epi32)
 
 #undef MATH_SUM_EXPRS
 };
@@ -515,14 +453,7 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 2, 2)
 
     union {
-        struct {
-            Scalar x, y;
-        };
-        struct {
-            Scalar r, g;
-        };
-        
-        std::array<Scalar, Size> arr;
+        YAVL_VEC2_MEMBERS
         __m128i m;
     };
 
@@ -547,7 +478,7 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
         return x + y;                                                   \
     }
 
-    YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32)
+    YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32, epi32)
 
 #undef MATH_SUM_EXPRS
 };
