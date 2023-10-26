@@ -156,19 +156,21 @@ namespace detail
     }
 
 #if defined(YAVL_X86_SSE42)
-#   include <yavl/vec/vec_sse42.h>
+    #include <yavl/vec/vec_sse42.h>
 #endif
 
 #if defined(YAVL_X86_AVX)
-#   include <yavl/vec/vec_avx.h>
+    #include <yavl/vec/vec_avx.h>
 #endif
 
 #if defined(YAVL_X86_AVX2)
-#   include <yavl/vec/vec_avx2.h>
+    #include <yavl/vec/vec_avx2.h>
 #endif
 
 namespace yavl
 {
+
+// Vec type aliasing
 
 template <typename T>
 using Vec2 = Vec<T, 2>;

@@ -51,10 +51,7 @@ struct Col {
 
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Mat {
-    using Scalar = std::decay_t<T>;
-    static constexpr uint32_t  Size = N;
-    static constexpr uint32_t IntrinSize = N;
-    static constexpr uint32_t BitSize = sizeof(Scalar) * N * 8;
+    YAVL_TYPE_ALIAS(T, N, N)
 
     std::array<T, N * N> arr;
 

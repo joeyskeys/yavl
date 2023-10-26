@@ -95,7 +95,7 @@ inline Vec base_shuffle_impl(const Vec& v, Ts ...args) {
 
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Vec {
-    YAVL_VEC_ALIAS(T, N, N)
+    YAVL_TYPE_ALIAS(T, N, N)
     YAVL_VEC_OPTIONAL_ALIAS(Scalar, N)
 
     static constexpr bool vectorized = false;

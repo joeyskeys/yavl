@@ -15,6 +15,36 @@ namespace yavl
         }                                                               \
     }
 
+#define VEC_AVX2_SPECIAL_OP(OP)                                         \
+    auto operator OP(const Vec& v) const {                              \
+        Vec tmp;                                                        \
+        for (int i = 0; i < Size; ++i)                                  \
+            tmp[i] = arr[i] * v[i];                                     \
+        return tmp;                                                     \
+    }                                                                   \
+    auto operator OP##=(const Vec& v) {                                 \
+        for (int i = 0; i < Size; ++i)                                  \
+            arr[i] OP##= v[i];                                          \
+        return *this;                                                   \
+    }                                                                   \
+    auto operator OP(const Scalar v) const {                            \
+        Vec tmp;                                                        \
+        for (int i = 0; i < Size; ++i)                                  \
+            tmp[i] = arr[i] * v;                                        \
+        return tmp;                                                     \
+    }                                                                   \
+    auto operator OP##=(const Scalar v) const {                         \
+        for (int i = 0; i < Size; ++i)                                  \
+            arr[i] OP##= v;                                             \
+        return *this;                                                   \
+    }                                                                   \
+    friend auto operator OP(const Scalar s, const Vec& v) {             \
+        Vec tmp;                                                        \
+        for (int i = 0; i < Size; ++i)                                  \
+            tmp[i] = s OP v[i];                                         \
+        return tmp;                                                     \
+    }
+
 template <typename I>
 struct alignas(32) Vec<I, 4, true, enable_if_int64_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 4, 4)
@@ -28,12 +58,15 @@ struct alignas(32) Vec<I, 4, true, enable_if_int64_t<I>> {
     YAVL_VECTORIZED_CTOR(256, epi64x, __m256i)
 
     // Operators
-    YAVL_DEFINE_BASIC_INT_OP(256, epi64, si256)
+    YAVL_DEFINE_OP(256, +, add, epi64)
+    YAVL_DEFINE_OP(256, -, sub, epi64)
+    VEC_AVX2_SPECIAL_OP(*)
+    VEC_AVX2_SPECIAL_OP(/)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
     inline Vec shuffle() const {
-        return Vec(_mm_shuffle_epi64(m, _MM_SHUFFLE(I3, I2, I1, I0)));
+        return Vec(_mm256_permute4x64_epi64(m, _MM_SHUFFLE(I3, I2, I1, I0)));
     }
 
     YAVL_DEFINE_MISC_FUNCS
@@ -62,12 +95,15 @@ struct alignas(32) Vec<I, 3, true, enable_if_int64_t<I>> {
     YAVL_VECTORIZED_CTOR(256, epi64x, __m256i)
 
     // Operators
-    YAVL_DEFINE_BASIC_INT_OP(256, epi64, si256)
+    YAVL_DEFINE_OP(256, +, add, epi64)
+    YAVL_DEFINE_OP(256, -, sub, epi64)
+    VEC_AVX2_SPECIAL_OP(*)
+    VEC_AVX2_SPECIAL_OP(/)
 
     // Misc funcs
     template <int I0, int I1, int I2>
     inline Vec shuffle() const {
-        return Vec(_mm_shuffle_epi64(m, _MM_SHUFFLE(0, I2, I1, I0)));
+        return Vec(_mm256_permute4x64_epi64(m, _MM_SHUFFLE(0, I2, I1, I0)));
     }
 
     YAVL_DEFINE_MISC_FUNCS
@@ -82,5 +118,7 @@ struct alignas(32) Vec<I, 3, true, enable_if_int64_t<I>> {
 
     #undef MATH_SUM_EXPRS
 };
+
+#undef MATH_ABS_EXPRS
 
 }
