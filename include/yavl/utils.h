@@ -1,8 +1,20 @@
 #pragma once
 
+#include <concepts>
+#include <stdint.h>
+#include <type_traits>
+
 namespace yavl
 {
 
+// Macros
+#define YAVL_TYPE_ALIAS(TYPE, N, INTRIN_N)                              \
+    using Scalar = std::decay_t<TYPE>;                                  \
+    static constexpr uint32_t Size = N;                                 \
+    static constexpr uint32_t IntrinSize = INTRIN_N;                    \
+    static constexpr uint32_t BitSize = sizeof(Scalar) * N * 8;
+
+// Traits
 template <typename T>
 struct is_float {
     static constexpr bool value = false;
@@ -46,5 +58,8 @@ using enable_if_int32_t = std::enable_if_t<is_int32_v<T>>;
 
 template <typename T>
 using enable_if_int64_t = std::enable_if_t<is_int64_v<T>>;
+
+// Types
+struct empty_t {};
 
 }

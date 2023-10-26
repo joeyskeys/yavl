@@ -3,22 +3,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <concepts>
-#include <stdint.h>
-#include <type_traits>
 
-#include <yavl/traits.h>
+#include <yavl/utils.h>
 
 namespace yavl
 {
-
-struct empty_t {};
-
-#define YAVL_VEC_ALIAS(TYPE, N, INTRIN_N)                               \
-    using Scalar = std::decay_t<TYPE>;                                  \
-    static constexpr uint32_t Size = N;                                 \
-    static constexpr uint32_t IntrinSize = INTRIN_N;                    \
-    static constexpr uint32_t BitSize = sizeof(Scalar) * N * 8;
 
 #define YAVL_VEC_OPTIONAL_ALIAS(TYPE, N)                                \
     using Z = std::conditional_t<(N > 2), TYPE, empty_t>;               \
@@ -132,7 +121,7 @@ struct Vec {
 
     // Ctors
     constexpr Vec() {
-        arr.fill(static_cast<T>(0));
+        arr.fill(static_cast<Scalar>(0));
     }
 
     template <typename ...Ts>

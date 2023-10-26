@@ -11,7 +11,7 @@ namespace yavl
             if constexpr (has_avx512vl)                                 \
                 return Vec(_mm##BITS##_abs_##IT1(m));                   \
             else                                                        \
-                return Vec(_mm##BITS##_andnot_si256(_mm##BITS##_set1_##IT2(0x8FFFFFFFFFFFFFFF), m)); \
+                return Vec(_mm##BITS##_andnot_si256(_mm##BITS##_set1_##IT2(0x7FFFFFFFFFFFFFFF), m)); \
         }                                                               \
     }
 

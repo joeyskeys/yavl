@@ -29,7 +29,7 @@
     std::array<Scalar, Size> arr;
 
 #define YAVL_VEC_ALIAS_VECTORIZED(TYPE, N, INTRIN_N)                    \
-    YAVL_VEC_ALIAS(TYPE, N, INTRIN_N)                                   \
+    YAVL_TYPE_ALIAS(TYPE, N, INTRIN_N)                                  \
     static constexpr bool vectorized = true;
 
 #define YAVL_VECTORIZED_CTOR(BITS, INTRIN_TYPE, REGI_TYPE)              \
