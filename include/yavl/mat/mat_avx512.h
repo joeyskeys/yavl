@@ -9,11 +9,13 @@ struct alignas(64) Mat<float, 4> {
 
     union {
         std::array<Scalar, 16>;
-        __m512 m;
+        // Intrinsic type will contain alignment attribute and don't work well
+        // as a template parameter, hence legacy array here.
+        __m512 m[1];
     };
 
     // Ctors
-    
+        
 };
 
 }

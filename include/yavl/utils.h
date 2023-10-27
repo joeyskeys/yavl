@@ -3,6 +3,7 @@
 #include <concepts>
 #include <stdint.h>
 #include <type_traits>
+#include <utility>
 
 namespace yavl
 {
@@ -13,6 +14,17 @@ namespace yavl
     static constexpr uint32_t Size = N;                                 \
     static constexpr uint32_t IntrinSize = INTRIN_N;                    \
     static constexpr uint32_t BitSize = sizeof(Scalar) * N * 8;
+
+// Templates
+template <int... indices, typename Func>
+inline void static_for(const Func& func, std::integer_sequence<int, indices...> sequence) {
+    (func(indices), ...);
+}
+
+template <int N, typename Func>
+inline void static_for(const Func& func) {
+    static_for(func, std::make_integer_sequence<int, N>{});
+}
 
 // Traits
 template <typename T>

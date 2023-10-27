@@ -13,8 +13,8 @@
     template <typename ...Ts>                                           \
         requires (std::default_initializable<Ts> && ...) &&             \
             (std::convertible_to<Ts, Scalar> && ...)                    \
-    constexpr Vec(Ts... args) {
-        
+    constexpr Vec(Ts... args) {                                         \
+        static_assert(sizeof...(args) > 1);                             \
     }
 
 // Cascaded including, using max bits intrinsic set available
