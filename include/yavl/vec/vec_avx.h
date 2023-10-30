@@ -21,11 +21,11 @@ static inline __m256d rcp_pd_impl(const __m256d m) {
     #endif
 
     __m256d t0, t1;
-    for (int i = 0; i < (has_avx512er ? 1 : 2); ++i) {
+    static_for<has_avx512er ? 1 : 2>([&](const auto i) {
         t0 = _mm256_add_pd(r, r);
         t1 = _mm256_mul_pd(r, m);
         r = _mm256_fnmadd_pd(t1, r, t0);
-    }
+    });
 
     #if defined(YAVL_X86_AVX512VL)
         return _mm256_fixupimm_pd(r, m, _mm256_set1_epi32(0x0087A622), 0);
@@ -64,12 +64,11 @@ static inline __m256d rsqrt_pd_impl(const __m256d m) {
     #endif
 
     __m256d t0, t1;
-
-    for (int i = 0; i < (has_avx512er ? 1 : 2); ++i) {
+    static_for<has_avx512er ? 1 : 2>([&](const auto i) {
         t0 = _mm256_mul_pd(r, c0);
         t1 = _mm256_mul_pd(r, m);
         r = _mm256_mul_pd(_mm256_fnmadd_pd(t1, r, c1), t0);
-    }
+    });
 
     #if defined(YAVL_X86_AVX512VL)
         return _mm256_fixupimm_pd(r, m, _mm256_set1_epi32(0x0383A622), 0);

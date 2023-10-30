@@ -67,11 +67,11 @@ static inline __m128d rcp_pd_impl(const __m128d m) {
 #endif
 
     __m128d ro = r, t0, t1;
-    for (int i = 0; i < (has_avx512er ? 1 : 2); ++i) {
+    static_for<has_avx512er ? 1 : 2>([&](const auto i) {
         t0 = _mm_add_pd(r, r);
         t1 = _mm_mul_pd(r, m);
         r = _mm_fnmadd_pd(t1, r, t0);
-    }
+    });
 
 #if defined(YAVL_X86_AVX512VL)
     return _mm_fixupimm_pd(r, m, _mm_set1_epi32(0x0087A622), 0);
@@ -155,11 +155,11 @@ static inline __m128d rsqrt_pd_impl(const __m128d m) {
 #endif
 
     // Refine using 1-2 Newton-Raphson iterations
-    for (int i = 0; i < (has_avx512er ? 1 : 2); ++i) {
+    static_for<has_avx512er ? 1 : 2>([&](const auto i) {
         t0 = _mm_mul_pd(r, c0);
         t1 = _mm_mul_pd(r, m);
         r = _mm_mul_pd(_mm_fnmadd_pd(t1, r, c1), t0);
-    }
+    });
 
 #if defined(YAVL_X86_AVX512VL)
     return _mm_fixupimm_pd(r, m, _mm_set1_epi32(0x0383A622), 0);

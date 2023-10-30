@@ -29,23 +29,35 @@ struct Col {
     }
 
     Col& operator =(const Vec<T, N>& v) {
-
+        static_for<Size>([&](const auto i) {
+            data[i] = v[i];
+        });
     }
 
     Col& operator =(const Col& c) {
-
+        static_for<Size>([&](const auto i) {
+            data[i] = c[i];
+        });
     }
 
     void operator +=(const Vec<T, N>& v) {
-
+        static_for<Size>([&](const auto i) {
+            data[i] += v[i];
+        });
     }
 
     void operator -=(const Vec<T, N>& v) {
-
+        static_for<Size>([&](const auto i) {
+            data[i] -= v[i];
+        });
     }
 
     bool operator ==(const Vec<T, N>& v) const {
-
+        bool ret = true;
+        static_for<Size>([&](const auto i) {
+            ret &= std::abs(v[i] - data[i]) < epsilon<Scalar>;
+        });
+        return ret;
     }
 };
 

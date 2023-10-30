@@ -144,32 +144,47 @@ struct Vec {
     }
 
 #define OP_VEC_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                       \
-    Vec tmp;                                                            \
-    for (int i = 0; i < Size; ++i)                                      \
-        tmp[i] = arr[i] OP v[i];                                        \
-    return tmp;
+    {                                                                   \
+        Vec tmp;                                                        \
+        static_for<Size>([&](const auto i) {                            \
+            tmp[i] = arr[i] OP v[i];                                    \
+        });                                                             \
+        return tmp;                                                     \
+    }
 
 #define OP_VEC_ASSIGN_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                \
-    for (int i = 0; i < Size; ++i)                                      \
-        arr[i] OP##= v[i];                                              \
-    return *this;
+    {                                                                   \
+        static_for<Size>([&](const auto i) {                            \
+            arr[i] OP##= v[i];                                          \
+        });                                                             \
+        return *this;                                                   \
+    }
 
 #define OP_SCALAR_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                    \
-    Vec tmp;                                                            \
-    for (int i = 0; i < Size; ++i)                                      \
-        tmp[i] = arr[i] OP v;                                           \
-    return tmp;
+    {                                                                   \
+        Vec tmp;                                                        \
+        static_for<Size>([&](const auto i) {                            \
+            tmp[i] = arr[i] OP v;                                       \
+        });                                                             \
+        return tmp;                                                     \
+    }
 
 #define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, INTRIN_TYPE)             \
-    for (int i = 0; i < Size; ++i)                                      \
-        arr[i] OP##= v;                                                 \
-    return *this;
+    {                                                                   \
+        static_for<Size>([&](const auto i) {                            \
+            arr[i] OP##= v;                                             \
+        });                                                             \
+        return *this;                                                   \
+    }
 
 #define OP_FRIEND_SCALAR_EXPRS(BITS, OP, NAME, INTRIN_TYPE)             \
-    Vec tmp;                                                            \
-    for (int i = 0; i < Size; ++i)                                      \
-        tmp[i] = s OP v[i];                                             \
-    return tmp;
+    {                                                                   \
+        Vec tmp;                                                        \
+        static_for<Size>([&](const auto i) {                            \
+            tmp[i] = s OP v[i];                                         \
+        });                                                             \
+        return tmp;                                                     \
+    }
 
     YAVL_DEFINE_BASIC_FP_OP( , , )
 
@@ -197,8 +212,9 @@ struct Vec {
         static_assert(sizeof...(Is) == Size);                           \
         std::array<int, sizeof...(Is)> indice{ Is... };                 \
         Vec tmp;                                                        \
-        for (int i = 0; i < Size; ++i)                                  \
+        static_for<Size>([&](const auto i) {                            \
             tmp.arr[i] = arr[indice[i]];                                \
+        });                                                             \
         return tmp;                                                     \
     }
 
@@ -265,8 +281,9 @@ struct Vec {
 #define MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
     {                                                                   \
         Vec tmp;                                                        \
-        for (int i = 0; i < Size; ++i)                                  \
+        static_for<Size>([&](const auto i) {                            \
             tmp[i] = std::abs(arr[i]);                                  \
+        });                                                             \
         return tmp;                                                     \
     }
 
@@ -302,8 +319,9 @@ struct Vec {
 #define MATH_SQRT_EXPRS                                                 \
     {                                                                   \
         Vec tmp;                                                        \
-        for (int i = 0; i < Size; ++i)                                  \
+        static_for<Size>([&](const auto i) {                            \
             tmp[i] = std::sqrt(arr[i]);                                 \
+        });                                                             \
         return tmp;                                                     \
     }
 

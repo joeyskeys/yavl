@@ -15,5 +15,11 @@ TEST_CASE("Util tests", "utils") {
         });
 
         REQUIRE(x == 5);
+
+        static_for<true ? 2 : 1>([&](int i) {
+            x += 1;
+        });
+
+        REQUIRE(x == 7);
     }
 }

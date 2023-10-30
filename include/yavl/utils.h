@@ -74,4 +74,8 @@ using enable_if_int64_t = std::enable_if_t<is_int64_v<T>>;
 // Types
 struct empty_t {};
 
+// Variables
+template <typename T>
+constexpr T epsilon = static_cast<T>(1e-6f);
+
 }

@@ -18,30 +18,35 @@ namespace yavl
 #define VEC_AVX2_SPECIAL_OP(OP)                                         \
     auto operator OP(const Vec& v) const {                              \
         Vec tmp;                                                        \
-        for (int i = 0; i < Size; ++i)                                  \
+        static_for<Size>([&](const auto i) {                            \
             tmp[i] = arr[i] * v[i];                                     \
+        });                                                             \
         return tmp;                                                     \
     }                                                                   \
     auto operator OP##=(const Vec& v) {                                 \
-        for (int i = 0; i < Size; ++i)                                  \
+        static_for<Size>([&](const auto i) {                            \
             arr[i] OP##= v[i];                                          \
+        });                                                             \
         return *this;                                                   \
     }                                                                   \
     auto operator OP(const Scalar v) const {                            \
         Vec tmp;                                                        \
-        for (int i = 0; i < Size; ++i)                                  \
+        static_for<Size>([&](const auto i) {                            \
             tmp[i] = arr[i] * v;                                        \
+        });                                                             \
         return tmp;                                                     \
     }                                                                   \
     auto operator OP##=(const Scalar v) const {                         \
-        for (int i = 0; i < Size; ++i)                                  \
+        static_for<Size>([&](const auto i) {                            \
             arr[i] OP##= v;                                             \
+        });                                                             \
         return *this;                                                   \
     }                                                                   \
     friend auto operator OP(const Scalar s, const Vec& v) {             \
         Vec tmp;                                                        \
-        for (int i = 0; i < Size; ++i)                                  \
+        static_for<Size>([&](const auto i) {                            \
             tmp[i] = s OP v[i];                                         \
+        });                                                             \
         return tmp;                                                     \
     }
 
