@@ -22,4 +22,14 @@ TEST_CASE("Util tests", "utils") {
 
         REQUIRE(x == 7);
     }
+
+    SECTION("Parametr pack split") {
+        auto func = [&](auto a1, auto a2) {
+            x = a1 + a2;
+        };
+        //SplitHelper<2, decltype(func), int, int, int, int, int, int>::even_split(func, 1, 2, 3, 4, 5, 6);
+        SplitHelper<2>::even_split(func, 1, 2, 3, 4);
+
+        REQUIRE(x == 11);
+    }
 }
