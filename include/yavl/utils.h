@@ -2,6 +2,7 @@
 
 #include <concepts>
 #include <stdint.h>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -69,6 +70,47 @@ struct SplitHelper<4, Func, T1, T2, T3, T4, Ts...> {
             SplitHelper<4, Func, Ts...>::even_split(func, args...);
     }
 };
+
+template <int N, typename... Ts>
+inline auto head(Ts... args) {
+    return std::tuple();
+}
+
+template <int N, typename T, typename... Ts>
+inline auto head(T t, Ts... args) {
+    if constexpr (N > 0)
+        return std::tuple_cat(std::make_tuple(t), head<N - 1>(args...));
+    else
+        return std::tuple();
+}
+
+template <int N, typename T, typename... Ts>
+inline auto skip(T t, Ts... args) {
+    if constexpr (N > 0)
+        return skip<N - 1>(args...);
+    else
+        return std::tuple_cat(std::make_tuple(t), std::make_tuple(args...));
+}
+
+template <int N, typename... Ts>
+inline auto tail(Ts... args) {
+    static_assert(N <= sizeof...(Ts));
+    return skip<sizeof...(Ts) - N>(args...);
+}
+
+/*
+struct dispatch {
+    template <int N>
+    void operator()(const auto& func, auto... args) {
+        static_assert(sizeof...(args) > 0 && sizeof...(args) % N == 0);
+        std::apply(func, head<N>(args...));
+        if constexpr (sizeof...(args) > 0 && sizeof...(args) >= N + N) {
+            std::apply(dispatch, std::tuple_cat(
+                std::make_tuple(func), tail<sizeof...(args) - N>(args...)));
+        }
+    }
+};
+*/
 
 // Traits
 template <typename T>

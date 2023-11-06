@@ -15,7 +15,18 @@ struct alignas(64) Mat<float, 4> {
     };
 
     // Ctors
-        
+    YAVL_MAT_VECTORIZED_CTOR(512, ps, __m512, 1);
+
+    template <typename... Ts>
+        requires (std::default_initializable<Ts> && ...)
+    constexpr Mat(Ts... args) {
+        static_assert(sizeof...(args) == N * N);
+        m[0] = _mm512_setr_ps(args...);
+    }
+
+    // Operators
+
+    // Misc funcs
 };
 
 }

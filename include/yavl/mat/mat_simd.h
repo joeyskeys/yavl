@@ -9,7 +9,7 @@
 #define YAVL_MAT_VECTORIZED_CTOR(BITS, INTRIN_TYPE, REGI_TYPE)          \
     Mat() {                                                             \
         static_for<MSize>([&](const auto i) {                           \
-            m[i] = _mm##BITS##_set1##INTRIN_TYPE(static_cast<Scalar>(0)); \
+            m[i] = _mm##BITS##_set1_##INTRIN_TYPE(static_cast<Scalar>(0)); \
         });                                                             \
     }                                                                   \
     template <typename V>                                               \
@@ -18,12 +18,6 @@
         static_for<MSize>([&](const auto i) {                           \
             m[i] = _mm##BITS##_set1_##INTRIN_TYPE(static_cast<Scalar>(v)); \
         });                                                             \
-    }                                                                   \
-    template <typename ...Ts>                                           \
-        requires (std::default_initializable<Ts> && ...) &&             \
-            (std::convertible_to<Ts, Scalar> && ...)                    \
-    constexpr Mat(Ts... args) {                                         \
-        static_assert(sizeof...(args) > 1);                             \
     }
 
 // Cascaded including, using max bits intrinsic set available
