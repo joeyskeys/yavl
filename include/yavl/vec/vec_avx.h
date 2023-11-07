@@ -119,7 +119,7 @@ struct alignas(32) Vec<double, 4> {
     YAVL_VECTORIZED_CTOR(256, pd, __m256d)
 
     // Operators
-    YAVL_DEFINE_BASIC_FP_OP(256, pd, pd)
+    YAVL_DEFINE_VEC_BASIC_FP_OP(256, pd, pd)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -166,7 +166,7 @@ struct alignas(32) Vec<double, 3> {
     YAVL_VECTORIZED_CTOR(256, pd, __m256d)
 
     // Operators
-    YAVL_DEFINE_BASIC_FP_OP(256, pd, pd)
+    YAVL_DEFINE_VEC_BASIC_FP_OP(256, pd, pd)
 
     // Misc funcs
     template <int I0, int I1, int I2>

@@ -209,7 +209,7 @@ struct alignas(16) Vec<float, 4> {
     YAVL_VECTORIZED_CTOR(, ps, __m128)
 
     // Operators
-    YAVL_DEFINE_BASIC_FP_OP(, ps, ps)
+    YAVL_DEFINE_VEC_BASIC_FP_OP(, ps, ps)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -259,7 +259,7 @@ struct alignas(16) Vec<float, 3> {
     YAVL_VECTORIZED_CTOR(, ps, __m128)
 
     // Operators
-    YAVL_DEFINE_BASIC_FP_OP(, ps, ps)
+    YAVL_DEFINE_VEC_BASIC_FP_OP(, ps, ps)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -330,7 +330,7 @@ struct alignas(16) Vec<double, 2> {
     YAVL_VECTORIZED_CTOR(, pd, __m128d)
 
     // Operators
-    YAVL_DEFINE_BASIC_FP_OP(, pd, pd)
+    YAVL_DEFINE_VEC_BASIC_FP_OP(, pd, pd)
 
     // Misc funcs
 #if defined(YAVL_X86_AVX)
@@ -391,7 +391,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
     YAVL_VECTORIZED_CTOR(, epi32, __m128i)
 
     // Operators
-    YAVL_DEFINE_BASIC_INT_OP(, epi32, si128)
+    YAVL_DEFINE_VEC_BASIC_INT_OP(, epi32, si128)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -427,7 +427,7 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
     YAVL_VECTORIZED_CTOR(, epi32, __m128i);
 
     // Operators
-    YAVL_DEFINE_BASIC_INT_OP(, epi32, si128)
+    YAVL_DEFINE_VEC_BASIC_INT_OP(, epi32, si128)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -461,7 +461,7 @@ struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
     YAVL_VECTORIZED_CTOR(, epi64, __m128i);
 
     // Operators
-    YAVL_DEFINE_BASIC_INT_OP(, epi32, si128)
+    YAVL_DEFINE_VEC_BASIC_INT_OP(, epi32, si128)
 
     // Misc funcs
     template <int I0, int I1>

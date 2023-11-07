@@ -63,8 +63,8 @@ struct alignas(32) Vec<I, 4, true, enable_if_int64_t<I>> {
     YAVL_VECTORIZED_CTOR(256, epi64x, __m256i)
 
     // Operators
-    YAVL_DEFINE_OP(256, +, add, epi64)
-    YAVL_DEFINE_OP(256, -, sub, epi64)
+    YAVL_DEFINE_OP(256, +, Vec, add, epi64)
+    YAVL_DEFINE_OP(256, -, Vec, sub, epi64)
     VEC_AVX2_SPECIAL_OP(*)
     VEC_AVX2_SPECIAL_OP(/)
 
@@ -100,8 +100,8 @@ struct alignas(32) Vec<I, 3, true, enable_if_int64_t<I>> {
     YAVL_VECTORIZED_CTOR(256, epi64x, __m256i)
 
     // Operators
-    YAVL_DEFINE_OP(256, +, add, epi64)
-    YAVL_DEFINE_OP(256, -, sub, epi64)
+    YAVL_DEFINE_OP(256, +, Vec, add, epi64)
+    YAVL_DEFINE_OP(256, -, Vec, sub, epi64)
     VEC_AVX2_SPECIAL_OP(*)
     VEC_AVX2_SPECIAL_OP(/)
 

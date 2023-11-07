@@ -32,48 +32,48 @@
     YAVL_TYPE_ALIAS(TYPE, N, INTRIN_N)                                  \
     static constexpr bool vectorized = true;
 
-#define YAVL_VECTORIZED_CTOR(BITS, INTRIN_TYPE, REGI_TYPE)              \
-    Vec() : m(_mm##BITS##_set1_##INTRIN_TYPE(static_cast<Scalar>(0))) {} \
+#define YAVL_VECTORIZED_CTOR(BITS, IT, REGI_TYPE)                       \
+    Vec() : m(_mm##BITS##_set1_##IT(static_cast<Scalar>(0))) {}         \
     template <typename V>                                               \
         requires std::default_initializable<V> && std::convertible_to<V, Scalar> \
-    Vec(V v) : m(_mm##BITS##_set1_##INTRIN_TYPE(static_cast<Scalar>(v))) {} \
+    Vec(V v) : m(_mm##BITS##_set1_##IT(static_cast<Scalar>(v))) {}      \
     template <typename ...Ts>                                           \
         requires (std::default_initializable<Ts> && ...) &&             \
             (std::convertible_to<Ts, Scalar> && ...)                    \
     constexpr Vec(Ts... args) {                                         \
         static_assert(sizeof...(args) > 1);                             \
         if constexpr (sizeof...(Ts) == IntrinSize - 1)                  \
-            m = _mm##BITS##_setr_##INTRIN_TYPE(args..., 0);             \
+            m = _mm##BITS##_setr_##IT(args..., 0);                      \
         else                                                            \
-            m = _mm##BITS##_setr_##INTRIN_TYPE(args...);                \
+            m = _mm##BITS##_setr_##IT(args...);                         \
     }                                                                   \
     Vec(const REGI_TYPE val) : m(val) {}
 
-#define COPY_ASSIGN_EXPRS(BITS, INTRIN_TYPE)                            \
+#define COPY_ASSIGN_EXPRS(BITS, IT)                                     \
     {                                                                   \
-        _mm##BITS##_store_##INTRIN_TYPE(arr.data(), b.m);               \
+        _mm##BITS##_store_##IT(arr.data(), b.m);                        \
         return *this;                                                   \
     }
 
-#define OP_VEC_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                       \
-    return Vec(_mm##BITS##_##NAME##_##INTRIN_TYPE(m, v.m));
+#define OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                            \
+    return Vec(_mm##BITS##_##NAME##_##IT(m, v.m));
 
-#define OP_VEC_ASSIGN_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                \
-    m = _mm##BITS##_##NAME##_##INTRIN_TYPE(m, v.m);                     \
+#define OP_VEC_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                     \
+    m = _mm##BITS##_##NAME##_##IT(m, v.m);                              \
     return *this;
 
-#define OP_SCALAR_EXPRS(BITS, OP, NAME, INTRIN_TYPE)                    \
-    auto vv = _mm##BITS##_set1_##INTRIN_TYPE(v);                        \
-    return Vec(_mm##BITS##_##NAME##_##INTRIN_TYPE(m, vv));
+#define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                             \
+    auto vv = _mm##BITS##_set1_##IT(v);                                 \
+    return Vec(_mm##BITS##_##NAME##_##IT(m, vv));
 
-#define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, INTRIN_TYPE)             \
-    auto vv = _mm##BITS##_set1_##INTRIN_TYPE(v);                        \
-    m = _mm##BITS##_##NAME##_##INTRIN_TYPE(m, vv);                      \
+#define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                      \
+    auto vv = _mm##BITS##_set1_##IT(v);                                 \
+    m = _mm##BITS##_##NAME##_##IT(m, vv);                               \
     return *this;
 
-#define OP_FRIEND_SCALAR_EXPRS(BITS, OP, NAME, INTRIN_TYPE)             \
-    auto vv = _mm##BITS##_set1_##INTRIN_TYPE(s);                        \
-    return Vec(_mm##BITS##_##NAME##_##INTRIN_TYPE(vv, v.m));
+#define OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                  \
+    auto vv = _mm##BITS##_set1_##IT(s);                                 \
+    return Vec(_mm##BITS##_##NAME##_##IT(vv, v.m));
 
 #if defined(YAVL_X86_FMA)
 #define MULADD(BITS, IT, A, B, C) _mm##BITS##_fmadd_##IT(A, B, C)

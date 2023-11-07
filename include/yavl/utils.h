@@ -16,6 +16,70 @@ namespace yavl
     static constexpr uint32_t IntrinSize = INTRIN_N;                    \
     static constexpr uint32_t BitSize = sizeof(Scalar) * N * 8;
 
+#define YAVL_DEFINE_VEC_OP(BITS, OP, AT, NAME, IT)                      \
+    auto operator OP(const AT& v) const {                               \
+        OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                            \
+    }                                                                   \
+    auto operator OP##=(const AT& v) {                                  \
+        OP_VEC_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                     \
+    }
+
+#define YAVL_DEFINE_SCALAR_OP(BITS, OP, NAME, IT)                       \
+    auto operator OP(const Scalar v) const {                            \
+        OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                             \
+    }                                                                   \
+    auto operator OP##=(const Scalar v) {                               \
+        OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                      \
+    }
+
+#define YAVL_DEFINE_FRIEND_OP(BITS, OP, AT, NAME, IT)                   \
+    friend auto operator OP(const Scalar s, const AT& v) {              \
+        OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                  \
+    }
+
+#define YAVL_DEFINE_OP(BITS, OP, AT, NAME, IT)                          \
+    YAVL_DEFINE_VEC_OP(BITS, OP, AT, NAME, IT)                          \
+    YAVL_DEFINE_SCALAR_OP(BITS, OP, NAME, IT)                           \
+    YAVL_DEFINE_FRIEND_OP(BITS, OP, AT, NAME, IT)
+
+#define YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, AT, IT)                  \
+    YAVL_DEFINE_OP(BITS, +, AT, add, IT)                                \
+    YAVL_DEFINE_OP(BITS, -, AT, sub, IT)                                \
+    YAVL_DEFINE_OP(BITS, *, AT, mul, IT)                                \
+    YAVL_DEFINE_OP(BITS, /, AT, div, IT)
+
+#define YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, AT, IT)                 \
+    YAVL_DEFINE_OP(BITS, +, AT, add, IT)                                \
+    YAVL_DEFINE_OP(BITS, -, AT, sub, IT)                                \
+    YAVL_DEFINE_OP(BITS, *, AT, mul, IT)
+
+#define YAVL_DEFINE_VEC_INDEX_OP                                        \
+    Scalar& operator [](const uint32_t i) {                             \
+        assert(i < Size);                                               \
+        return arr[i];                                                  \
+    }                                                                   \
+    const Scalar& operator [](const uint32_t i) const {                 \
+        assert(i < Size);                                               \
+        return arr[i];                                                  \
+    }
+
+#define YAVL_DEFINE_COPY_ASSIGN_OP(BITS, AT, IT)                        \
+    Vec& operator =(const AT& b) {                                      \
+        COPY_ASSIGN_EXPRS(BITS, IT)                                     \
+    }
+
+#define YAVL_DEFINE_VEC_BASIC_MISC_OP(BITS, IT)                         \
+    YAVL_DEFINE_VEC_INDEX_OP                                            \
+    YAVL_DEFINE_COPY_ASSIGN_OP(BITS, Vec, IT)
+
+#define YAVL_DEFINE_VEC_BASIC_FP_OP(BITS, IT, CMD_SUFFIX)               \
+    YAVL_DEFINE_VEC_BASIC_MISC_OP(BITS, CMD_SUFFIX)                     \
+    YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, Vec, IT)
+
+#define YAVL_DEFINE_VEC_BASIC_INT_OP(BITS, IT, CMD_SUFFIX)              \
+    YAVL_DEFINE_VEC_BASIC_MISC_OP(BITS, CMD_SUFFIX)                     \
+    YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, Vec, IT)
+
 // Templates
 template <int... indices, typename Func>
 inline void static_for(const Func& func, std::integer_sequence<int, indices...> sequence) {

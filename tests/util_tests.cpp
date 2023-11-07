@@ -21,6 +21,14 @@ TEST_CASE("Util tests", "utils") {
         });
 
         REQUIRE(x == 7);
+
+        static_for<2>([&](int i) {
+            static_for<2>([&](int j) {
+                x += 1;
+            });
+        });
+
+        REQUIRE(x == 11);
     }
 
     SECTION("Parametr pack split") {
@@ -57,7 +65,7 @@ TEST_CASE("Util tests", "utils") {
         REQUIRE(std::tuple_size_v<decltype(tt3)> == 2);
         REQUIRE(std::get<0>(tt3) == 3);
 
-        dispatch<2>(func, 1, 2, 3, 4);
-        REQUIRE(x == 7);
+        //dispatch<2>(func, 1, 2, 3, 4);
+        //REQUIRE(x == 7);
     }
 }

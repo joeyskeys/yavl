@@ -13,44 +13,90 @@
 namespace yavl
 {
 
+#define YAVL_DEFINE_COL_BASIC_MISC_OP(BITS, IT)                         \
+    YAVL_DEFINE_VEC_INDEX_OP                                            \
+    YAVL_DEFINE_COPY_ASSIGN_OP(BITS, Vec, IT)                           \
+    YAVL_DEFINE_COPY_ASSIGN_OP(BITS, Col, IT)
+
+#define YAVL_DEFINE_COL_BASIC_FP_OP(BITS, IT, CMDFIX)                   \
+    YAVL_DEFINE_COL_BASIC_MISC_OP(BITS, CMDFIX)                         \
+    YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, Vec, IT)                     \
+    YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, Col, IT)
+
+#define YAVL_DEFINE_COL_BASIC_INT_OP(BITS, IT, CMDFIX)                  \
+    YAVL_DEFINE_COL_BASIC_MISC_OP(BITS, CMDFIX)                         \
+    YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, Vec, IT)                    \
+    YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, Col, IT)
+
+// A utility class works like a array view of matrix at ranges for specific
+// colume, behaves like a vector
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Col {
-    T* data;
+    T* arr;
+
+    YAVL_TYPE_ALIAS(T, N, N)
 
     template <typename S>
     Column(S* d) : data(const_cast<T*>(d)) {}
 
-    T& operator [](unsigned int idx) {
-        return data[idx];
-    }
-    
-    const T& operator [](uint32_t idx) const {
-        return data[idx];
-    }
-
-    Col& operator =(const Vec<T, N>& v) {
-        static_for<Size>([&](const auto i) {
-            data[i] = v[i];
-        });
+    // Operators
+    #define COPY_ASSIGN_EXPRS(BITS, IT)                                 \
+    {                                                                   \
+        std::memcpy(arr, b.arr, sizeof(Scalar) * Size);                 \
+        return *this;                                                   \
     }
 
-    Col& operator =(const Col& c) {
-        static_for<Size>([&](const auto i) {
-            data[i] = c[i];
-        });
+    #define OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                        \
+    {                                                                   \
+        Vec tmp;                                                        \
+        static_for<Size>([&](const auto i) {                            \
+            tmp[i] = arr[i] OP v[i];                                    \
+        });                                                             \
+        return tmp;                                                     \
     }
 
-    void operator +=(const Vec<T, N>& v) {
-        static_for<Size>([&](const auto i) {
-            data[i] += v[i];
-        });
+    #define OP_VEC_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                 \
+    {                                                                   \
+        static_for<Size>([&](const auto i) {                            \
+            arr[i] OP##= v[i];                                          \
+        });                                                             \
+        return *this;                                                   \
     }
 
-    void operator -=(const Vec<T, N>& v) {
-        static_for<Size>([&](const auto i) {
-            data[i] -= v[i];
-        });
+    #define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                         \
+    {                                                                   \
+        Vec tmp;                                                        \
+        static_for<Size>([&](const auto i) {                            \
+            tmp[i] = arr[i] OP v;                                       \
+        });                                                             \
+        return tmp;                                                     \
     }
+
+    #define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                  \
+    {                                                                   \
+        static_for<Size>([&](const auto i) {                            \
+            arr[i] OP##= v;                                             \
+        });                                                             \
+        return *this;                                                   \
+    }
+
+    #define OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)              \
+    {                                                                   \
+        Vec tmp;                                                        \
+        static_for<Size>([&](const auto i) {                            \
+            tmp[i] = s OP v[i];                                         \
+        });                                                             \
+        return tmp;                                                     \
+    }
+
+    YAVL_DEFINE_COL_BASIC_FP_OP( , , )
+
+    #undef COPY_ASSIGN_EXPRS
+    #undef OP_VEC_EXPRS
+    #undef OP_VEC_ASSIGN_EXPRS
+    #undef OP_SCALAR_EXPRS
+    #undef OP_SCALAR_ASSIGN_EXPRS
+    #undef OP_FRIEND_SCALAR_EXPRS
 
     bool operator ==(const Vec<T, N>& v) const {
         bool ret = true;
@@ -60,6 +106,28 @@ struct Col {
         return ret;
     }
 };
+
+#define YAVL_DEFINE_MAT_MUL_OP(BITS, IT)                                \
+    auto operator *(const Scalar s) const {                             \
+        MAT_MUL_SCALAR_EXPRS                                            \
+    }                                                                   \
+    auto operator *=(const Scalar s) {                                  \
+        MAT_MUL_ASSIGN_SCALAR_EXPRS                                     \
+    }                                                                   \
+    auto operator *(const Vec<Scalar, N>& vec) const {                  \
+        MAT_MUL_VEC_EXPRS                                               \
+    }                                                                   \
+    auto operator *(const Mat& mat) const {                             \
+        MAT_MUL_MAT_EXPRS                                               \
+    }                                                                   \
+    auto operator *=(const Mat& mat) {                                  \
+        MAT_MUL_ASSIGN_MAT_EXPRS                                        \
+    }
+
+#define YAVL_DEFINE_DATA_METHOD                                         \
+    auto data() {                                                       \
+        return arr.data();                                              \
+    }
 
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Mat {
@@ -95,13 +163,74 @@ struct Mat {
 
     // Operators
     auto operator [](uint32_t idx) {
-        return Col<T, N>(&arr[idx * N]);
+        return Col<Scalar, N>(&arr[idx * N]);
     }
 
     auto operator [](uint32_t idx) const {
         return Col<T, N>(&arr[idx * N]);
     }
 
+    #define MAT_MUL_SCALAR_EXPRS                                        \
+    {                                                                   \
+        Mat tmp;                                                        \
+        static_for<N * N>([&](const auto i) {                           \
+            tmp.arr[i] = arr[i] * s;                                    \
+        });                                                             \
+        return tmp;                                                     \
+    }
+
+    #define MAT_MUL_ASSIGN_SCAlAR_EXPRS                                 \
+    {                                                                   \
+        for (int i = 0; i < N * N; ++i)                                 \
+        static_for<N * N>([&](const auto i) {                           \
+            arr[i] *= s;                                                \
+        });                                                             \
+        return *this;                                                   \
+    }
+
+    #define MAT_MUL_VEC_EXPRS                                           \
+    {                                                                   \
+        Vec<Scalar, N> tmp;                                             \
+        static_for<N>([&](const auto i) {                               \
+            static_for<N>([&](const auto j) {                           \
+                tmp[i] += arr[j * N + i] * vec[j];                      \
+            });                                                         \
+        });                                                             \
+        return tmp;                                                     \
+    }
+
+    #define MAT_MUL_MAT_EXPRS                                           \
+    {                                                                   \
+        Mat tmp;                                                        \
+        static_for<N>([&](const auto i) {                               \
+            static_for<N>([&](const auto j) {                           \
+                static_for<N>([&](const auto k) {                       \
+                    tmp[i][j] += arr[k * N + j] * mat[i][k];            \
+                });                                                     \
+            });                                                         \
+        });                                                             \
+        return tmp;                                                     \
+    }
+
+    #define MAT_MUL_ASSIGN_MAT_EXPRS                                    \
+    {                                                                   \
+        Mat tmp = *this * mat;                                          \
+        *this = tmp;                                                    \
+        return *this;                                                   \
+    }
+
+    YAVL_DEFINE_MAT_MUL_OP(, )
+
+    #undef MAT_MUL_SCAlAR_EXPRS
+    #undef MAT_MUL_ASSIGN_SCALAR_EXPRS
+    #undef MAT_MUL_VEC_EXPRS
+    #undef MAT_MUL_MAT_EXPRS
+    #undef MAT_MUL_ASSIGN_MAT_EXPRS
+
+    // Misc
+    YAVL_DEFINE_DATA_METHOD
+
+    // Matrix manipulation methods
     auto transpose() const {
         Mat tmp;
         for (int i = 0; i < N; ++i)
@@ -109,47 +238,7 @@ struct Mat {
                 tmp[i][j] = arr[j * N + i];
         return tmp;
     }
-
-    auto operator *(const Scalar s) const {
-        Mat tmp;
-        for (int i = 0; i < N * N; ++i)
-            tmp.arr[i] = arr[i] * s;
-        return tmp;
-    }
-
-    auto operator *=(const Scalar s) {
-        for (int i = 0; i < N * N; ++i)
-            arr[i] *= s;
-        return *this;
-    }
-
-    auto operator *(const Vec<T, N>& vec) const {
-        Vec<T, N> tmp;
-        for (int i = 0; i < N; ++i)
-            for (int j = 0; j < N; ++j)
-                tmp[i] += arr[j * N + i] * vec[j];
-        return tmp;
-    }
-
-    auto operator *(const Mat& mat) const {
-        Mat tmp;
-        for (int i = 0; i < N; ++i)
-            for (int j = 0; j < N; ++j)
-                for (int k = 0; k < N; ++k)
-                    tmp[i][j] += arr[k * N + j] * mat[i][k];
-        return tmp;
-    }
-
-    auto operator *=(const Mat& mat) {
-        Mat tmp = *this * mat;
-        *this = tmp;
-        return *this;
-    }
-
-    auto data() {
-        return arr.data();
-    }
-
+    
     std::pair<bool, Mat> inverse() const {
         if constexpr (N == 2) {
             T det = static_cast<T>(1) / (arr[0] * arr[3] - arr[1] * arr[2]);

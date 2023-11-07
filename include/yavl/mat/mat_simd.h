@@ -6,18 +6,42 @@
     static constexpr uint32_t MSize = REGI_N;                           \
     static constexpr bool vectorized = true;
 
-#define YAVL_MAT_VECTORIZED_CTOR(BITS, INTRIN_TYPE, REGI_TYPE)          \
+#define YAVL_MAT_VECTORIZED_CTOR(BITS, IT, REGI_TYPE)                   \
     Mat() {                                                             \
         static_for<MSize>([&](const auto i) {                           \
-            m[i] = _mm##BITS##_set1_##INTRIN_TYPE(static_cast<Scalar>(0)); \
+            m[i] = _mm##BITS##_set1_##IT(static_cast<Scalar>(0));       \
         });                                                             \
     }                                                                   \
     template <typename V>                                               \
         requires std::default_initializable<V> && std::convertible_to<V, Scalar> \
     Mat(V v) {                                                          \
         static_for<MSize>([&](const auto i) {                           \
-            m[i] = _mm##BITS##_set1_##INTRIN_TYPE(static_cast<Scalar>(v)); \
+            m[i] = _mm##BITS##_set1_##IT(static_cast<Scalar>(v));       \
         });                                                             \
+    }
+
+#define MAT_MUL_SCALAR_EXPRS                                            \
+    {                                                                   \
+        Mat tmp;                                                        \
+        auto vs = _mm##BITS##_set1_##IT(s);                             \
+        static_for<MSize>([&](const auto i) {                           \
+            tmp.m[i] = _mm##BITS##_mul_##IT(vs);                        \
+        });                                                             \
+        return tmp;                                                     \
+    }
+
+#define MAT_MUL_ASSIGN_SCALAR_EXPRS                                     \
+    {                                                                   \
+        auto vs = _mm##BITS##_set1_##IT(s);                             \
+        static_for<MSize>([&](const auto i) {                           \
+            m[i] = _mm##BITS##_mul_##IT(vs);                            \
+        });                                                             \
+        return *this;                                                   \
+    }
+
+#define MAT_MUL_VEC_EXPRS                                               \
+    {                                                                   \
+        Vec tmp;                                                        \
     }
 
 // Cascaded including, using max bits intrinsic set available
