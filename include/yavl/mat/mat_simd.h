@@ -2,7 +2,7 @@
 
 // Common macros
 #define YAVL_MAT_ALIAS_VECTORIZED(TYPE, N, INTRIN_N, REGI_N)            \
-    YAVL_TYPE_ALIAS(TYPE, N, INTIRN_N)                                  \
+    YAVL_MAT_ALIAS(TYPE, N, INTIRN_N)                                   \
     static constexpr uint32_t MSize = REGI_N;                           \
     static constexpr bool vectorized = true;
 
@@ -37,11 +37,6 @@
             m[i] = _mm##BITS##_mul_##IT(vs);                            \
         });                                                             \
         return *this;                                                   \
-    }
-
-#define MAT_MUL_VEC_EXPRS                                               \
-    {                                                                   \
-        Vec tmp;                                                        \
     }
 
 // Cascaded including, using max bits intrinsic set available

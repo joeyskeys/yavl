@@ -13,6 +13,10 @@
 namespace yavl
 {
 
+#define YAVL_MAT_ALIAS(TYPE, N, INTRIN_N)                               \
+    YAVL_TYPE_ALIAS(TYPE, N, INTRIN_N)                                  \
+    static constexpr uint32_t Size2 = Size * Size;
+
 #define YAVL_DEFINE_COL_BASIC_MISC_OP(BITS, IT)                         \
     YAVL_DEFINE_VEC_INDEX_OP                                            \
     YAVL_DEFINE_COPY_ASSIGN_OP(BITS, Vec, IT)                           \
@@ -27,6 +31,14 @@ namespace yavl
     YAVL_DEFINE_COL_BASIC_MISC_OP(BITS, CMDFIX)                         \
     YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, Vec, IT)                    \
     YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, Col, IT)
+
+#define YAVL_DEFINE_COL_DOT_FUNC(BITS, IT)                              \
+    inline Scalar dot(const Vec& b) const {                             \
+        COL_DOT_VEC_EXPRS                                               \
+    }                                                                   \
+    inline Scalar dot(const Col& b) const {                             \
+        COL_DOT_COL_EXPRS                                               \
+    }
 
 // A utility class works like a array view of matrix at ranges for specific
 // colume, behaves like a vector
@@ -105,17 +117,37 @@ struct Col {
         });
         return ret;
     }
+
+    // Geometry
+    #define COL_DOT_VEC_EXPRS                                           \
+    {                                                                   \
+        Scalar sum{0};                                                  \
+        static_for<Size>([&](const auto i) {                            \
+            sum += arr[i] * b.arr[i];                                   \
+        });                                                             \
+        return sum;                                                     \
+    }
+
+    #define COL_DOT_COL_EXPRS COL_DOT_VEC_EXPRS
+
+    YAVL_DEFINE_COL_DOT_FUNC
+
+    #undef COL_DOT_VEC_EXPRS
+    #undef COL_DOT_COL_EXPRS
 };
 
-#define YAVL_DEFINE_MAT_MUL_OP(BITS, IT)                                \
+#define YAVL_DEFINE_MAT_MUL_OP                                          \
     auto operator *(const Scalar s) const {                             \
         MAT_MUL_SCALAR_EXPRS                                            \
     }                                                                   \
     auto operator *=(const Scalar s) {                                  \
         MAT_MUL_ASSIGN_SCALAR_EXPRS                                     \
     }                                                                   \
-    auto operator *(const Vec<Scalar, N>& vec) const {                  \
+    auto operator *(const Vec<Scalar, Size>& vec) const {               \
         MAT_MUL_VEC_EXPRS                                               \
+    }                                                                   \
+    auto operator *(const Col<Scalar, Size>& col) const {               \
+        MAT_MUL_COL_EXPRS                                               \
     }                                                                   \
     auto operator *(const Mat& mat) const {                             \
         MAT_MUL_MAT_EXPRS                                               \
@@ -131,9 +163,9 @@ struct Col {
 
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Mat {
-    YAVL_TYPE_ALIAS(T, N, N)
+    YAVL_MAT_ALIAS(T, N, N)
 
-    std::array<T, N * N> arr;
+    std::array<T, Size2> arr;
 
     // Ctors
     constexpr Mat() {
@@ -143,12 +175,12 @@ struct Mat {
     template <typename ...Ts>
     Mat(Ts... args) {
         static_assert(
-            (sizeof...(Ts) == N * N && (true && ... && std::is_arithmetic_v<Ts>)) ||
-            (sizeof...(Ts) == N &&
-                ((true && ... && std::is_same_v<Ts, Vec<float, N>>) ||
-                (true && ... && std::is_same_v<Ts, Vec<double, N>>))));
+            (sizeof...(Ts) == Size2 && (true && ... && std::is_arithmetic_v<Ts>)) ||
+            (sizeof...(Ts) == Size &&
+                ((true && ... && std::is_same_v<Ts, Vec<float, Size>>) ||
+                (true && ... && std::is_same_v<Ts, Vec<double, Size>>))));
 
-        if constexpr (sizeof...(Ts) == N * N) {
+        if constexpr (sizeof...(Ts) == Size2) {
             arr = { static_cast<T>(args)... };
         }
         else {
@@ -163,17 +195,17 @@ struct Mat {
 
     // Operators
     auto operator [](uint32_t idx) {
-        return Col<Scalar, N>(&arr[idx * N]);
+        return Col<Scalar, N>(&arr[idx * Size]);
     }
 
     auto operator [](uint32_t idx) const {
-        return Col<T, N>(&arr[idx * N]);
+        return Col<T, N>(&arr[idx * Size]);
     }
 
     #define MAT_MUL_SCALAR_EXPRS                                        \
     {                                                                   \
         Mat tmp;                                                        \
-        static_for<N * N>([&](const auto i) {                           \
+        static_for<Size2>([&](const auto i) {                           \
             tmp.arr[i] = arr[i] * s;                                    \
         });                                                             \
         return tmp;                                                     \
@@ -181,8 +213,8 @@ struct Mat {
 
     #define MAT_MUL_ASSIGN_SCAlAR_EXPRS                                 \
     {                                                                   \
-        for (int i = 0; i < N * N; ++i)                                 \
-        static_for<N * N>([&](const auto i) {                           \
+        for (int i = 0; i < Size2; ++i)                                 \
+        static_for<Size2>([&](const auto i) {                           \
             arr[i] *= s;                                                \
         });                                                             \
         return *this;                                                   \
@@ -190,10 +222,10 @@ struct Mat {
 
     #define MAT_MUL_VEC_EXPRS                                           \
     {                                                                   \
-        Vec<Scalar, N> tmp;                                             \
-        static_for<N>([&](const auto i) {                               \
-            static_for<N>([&](const auto j) {                           \
-                tmp[i] += arr[j * N + i] * vec[j];                      \
+        Vec<Scalar, Size> tmp;                                          \
+        static_for<Size>([&](const auto i) {                            \
+            static_for<Size>([&](const auto j) {                        \
+                tmp[i] += arr[j * Size + i] * vec[j];                   \
             });                                                         \
         });                                                             \
         return tmp;                                                     \
@@ -202,10 +234,10 @@ struct Mat {
     #define MAT_MUL_MAT_EXPRS                                           \
     {                                                                   \
         Mat tmp;                                                        \
-        static_for<N>([&](const auto i) {                               \
-            static_for<N>([&](const auto j) {                           \
-                static_for<N>([&](const auto k) {                       \
-                    tmp[i][j] += arr[k * N + j] * mat[i][k];            \
+        static_for<Size>([&](const auto i) {                            \
+            static_for<Size>([&](const auto j) {                        \
+                static_for<Size>([&](const auto k) {                    \
+                    tmp[i][j] += arr[k * Size + j] * mat[i][k];         \
                 });                                                     \
             });                                                         \
         });                                                             \
@@ -219,7 +251,7 @@ struct Mat {
         return *this;                                                   \
     }
 
-    YAVL_DEFINE_MAT_MUL_OP(, )
+    YAVL_DEFINE_MAT_MUL_OP
 
     #undef MAT_MUL_SCAlAR_EXPRS
     #undef MAT_MUL_ASSIGN_SCALAR_EXPRS
@@ -233,19 +265,19 @@ struct Mat {
     // Matrix manipulation methods
     auto transpose() const {
         Mat tmp;
-        for (int i = 0; i < N; ++i)
-            for (int j = 0; j < N; ++j)
-                tmp[i][j] = arr[j * N + i];
+        for (int i = 0; i < Size; ++i)
+            for (int j = 0; j < Size; ++j)
+                tmp[i][j] = arr[j * Size + i];
         return tmp;
     }
     
     std::pair<bool, Mat> inverse() const {
-        if constexpr (N == 2) {
+        if constexpr (Size == 2) {
             T det = static_cast<T>(1) / (arr[0] * arr[3] - arr[1] * arr[2]);
             Mat ret{arr[3], -arr[1], -arr[2], arr[0]};
             return ret * det;
         }
-        else if constexpr (N == 3) {
+        else if constexpr (Size == 3) {
             Scalar A = arr[4] * arr[8] - arr[7] * arr[5];
             Scalar B = arr[7] * arr[2] - arr[1] * arr[8];
             Scalar C = arr[1] * arr[5] - arr[4] * arr[2];
@@ -267,13 +299,13 @@ struct Mat {
             int ipiv[4] = {0, 0, 0, 0};
             Mat minv = *this;
 
-            for (int i = 0; i < N; ++i) {
+            for (int i = 0; i < Size; ++i) {
                 int irow = 0, icol = 0;
                 T big = static_cast<Scalar>(0);
                 // Choose pivot
-                for (int j = 0; j < N; ++j) {
+                for (int j = 0; j < Size; ++j) {
                     if (ipiv[j] != 1) {
-                        for (int k = 0; k < N; ++k) {
+                        for (int k = 0; k < Size; ++k) {
                             if (ipiv[k] == 0) {
                                 if (std::abs(minv[k][j]) >= big) {
                                     big = static_cast<Scalar>(std::abs(minv[k][j]));
@@ -292,7 +324,7 @@ struct Mat {
 
                 // Swap rows irow and icol for pivot
                 if (irow != icol) {
-                    for (int k = 0; k < N; ++k)
+                    for (int k = 0; k < Size; ++k)
                         std::swap(minv[k][irow], minv[k][icol]);
                 }
                 indxr[i] = irow;
@@ -304,22 +336,22 @@ struct Mat {
                 // Set m[icol][icol] to one by scaling row icol
                 Scalar pivinv = static_cast<T>(1) / minv[icol][icol];
                 minv[icol][icol] = static_cast<Scalar>(1);
-                for (int j = 0; j < N; ++j) minv[j][icol] *= pivinv;
+                for (int j = 0; j < Size; ++j) minv[j][icol] *= pivinv;
 
                 // Subtract this row from others to zero out their columns
-                for (int j = 0; j < N; ++j) {
+                for (int j = 0; j < Size; ++j) {
                     if (j != icol) {
                         Scalar save = minv[icol][j];
                         minv[icol][j] = static_cast<Scalar>(0);
-                        for (int k = 0; k < N; ++k) minv[k][j] -= minv[k][icol] * save;
+                        for (int k = 0; k < Size; ++k) minv[k][j] -= minv[k][icol] * save;
                     }
                 }
             }
 
             // Swap columns to reflect permutation
-            for (int j = N - 1; j >= 0; --j) {
+            for (int j = Size - 1; j >= 0; --j) {
                 if (indxr[j] != indxc[j]) {
-                    for (int k = 0; k < N; ++k)
+                    for (int k = 0; k < Size; ++k)
                         std::swap(minv[indxr[j]][k], minv[indxc[j]][k]);
                 }
             }
