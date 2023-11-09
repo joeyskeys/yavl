@@ -3,6 +3,22 @@
 namespace yavl
 {
 
+template <>
+struct Col<float, 4> {
+    YAVL_TYPE_ALIAS(T, N, N)
+
+    Scalar* arr;
+    __m128 m;
+
+    Column(Scalar* d) : arr(const_cast<Scalar*>(d)) {}
+
+    // Operators
+    #define OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                        \
+    {
+        Vec tmp;
+    }
+};
+
 template <typename T, uint32_t N>
 inline Vec<T, N> mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
     // 1. Two possible impl for mat vec/col multiplication
@@ -24,8 +40,8 @@ inline Vec<T, N> mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec)
                 tmp.arr[i] = _mm_cvtss_f32(_mm_dp_ps(row, vec.m, 0b11110001));
                 /*
                 static_for<Mat<T, N>::Size>([&](const auto i) {
-                    auto col = _mm_mul_ps(_mm512_extractf32x4_ps(mat.m[0], i));
-                    tmp.m = _mm_add_ps(tmp.m, col);
+                    tmp.m = _mm_fmadd_ps(_mm512_extractf32x4_ps(mat.m[0], i),
+                        vec.m, tmp.m);
                 });
                 */
             }
@@ -40,16 +56,34 @@ inline Vec<T, N> mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec)
             tmp.arr[i] = Vec<T, N>(_mm_mul_epi32(row, vec.m)).sum();
         }
     });
+    return tmp;
 }
 
 #define MAT_MUL_VEC_EXPRS                                           \
     {                                                               \
-        mat_mul_vec_32_impl(*this, vec);                            \
+        return mat_mul_vec_32_impl(*this, vec);                     \
     }
 
 #define MAT_MUL_COL_EXPRS                                           \
-    {
-        // TODO
+    {                                                               \
+        auto vm = _mm_load_ps(col.arr);                             \
+        return mat_mul_vec_32_impl(*this, Vec<T, N>(vm));           \
+    }
+
+#define MAT_MUL_MAT_EXPRS                                           \
+    {                                                               \
+        Mat tmp;                                                    \
+        static_for<Size>([&](const auto i) {                        \
+            Vec<T, N> curv{};                                       \
+            static_for<Size>([&](const auto j) {                    \
+                /*auto tmpv = operator[](j) * mat[i];*/             \
+                auto lv = _mm_load_ps(operator[](j).arr);           \
+                auto rv = _mm_load_ps(mat[i].arr);                  \
+                curv.m = _mm_fmadd_ps(curv.m, lv, rv);              \
+            });                                                     \
+            _mm_store_ps(&tmp.arr[i << 2], curv.m);                 \
+        });                                                         \
+        return tmp;                                                 \
     }
 
 template <>
@@ -77,6 +111,9 @@ struct alignas(64) Mat<float, 4> {
     YAVL_DEFINE_MAT_MUL_OP
 
     // Misc funcs
+    YAVL_DEFINE_DATA_METHOD
+
+    // Matrix manipulation methods
 };
 
 }

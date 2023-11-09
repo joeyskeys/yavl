@@ -39,6 +39,33 @@
         return *this;                                                   \
     }
 
+#define OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                            \
+    {                                                                   \
+        auto m = _mm_load_ps(arr);                                      \
+        return Vec(_mm##BITS##_##NAME##_##IT(m, v.m));                  \
+    }
+
+#define OP_VEC_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                     \
+    {                                                                   \
+        auto m = _mm_load_ps(arr);
+        auto vv = _mm##
+    }
+
+#define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                             \
+    {                                                                   \
+
+    }
+
+#define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                      \
+    {                                                                   \
+
+    }
+
+#define OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                  \
+    {                                                                   \
+
+    }
+
 // Cascaded including, using max bits intrinsic set available
 #if defined(YAVL_X86_AVX512ER)
     #include <yavl/mat/mat_avx512.h>

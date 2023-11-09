@@ -49,7 +49,7 @@ struct Col {
     YAVL_TYPE_ALIAS(T, N, N)
 
     template <typename S>
-    Column(S* d) : data(const_cast<T*>(d)) {}
+    Column(Scalar* d) : arr(const_cast<T*>(d)) {}
 
     // Operators
     #define COPY_ASSIGN_EXPRS(BITS, IT)                                 \
@@ -103,7 +103,7 @@ struct Col {
 
     YAVL_DEFINE_COL_BASIC_FP_OP( , , )
 
-    #undef COPY_ASSIGN_EXPRS
+    //#undef COPY_ASSIGN_EXPRS
     #undef OP_VEC_EXPRS
     #undef OP_VEC_ASSIGN_EXPRS
     #undef OP_SCALAR_EXPRS
@@ -153,7 +153,9 @@ struct Col {
         MAT_MUL_MAT_EXPRS                                               \
     }                                                                   \
     auto operator *=(const Mat& mat) {                                  \
-        MAT_MUL_ASSIGN_MAT_EXPRS                                        \
+        Mat tmp = *this * mat;                                          \
+        *this = tmp;                                                    \
+        return *this;                                                   \
     }
 
 #define YAVL_DEFINE_DATA_METHOD                                         \
@@ -242,13 +244,6 @@ struct Mat {
             });                                                         \
         });                                                             \
         return tmp;                                                     \
-    }
-
-    #define MAT_MUL_ASSIGN_MAT_EXPRS                                    \
-    {                                                                   \
-        Mat tmp = *this * mat;                                          \
-        *this = tmp;                                                    \
-        return *this;                                                   \
     }
 
     YAVL_DEFINE_MAT_MUL_OP
