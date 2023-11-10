@@ -1,5 +1,7 @@
 #pragma once
 
+#include <yavl/vec/vec_simd.h>
+
 // Common macros
 #define YAVL_MAT_ALIAS_VECTORIZED(TYPE, N, INTRIN_N, REGI_N)            \
     YAVL_MAT_ALIAS(TYPE, N, INTIRN_N)                                   \
@@ -41,29 +43,34 @@
 
 #define OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                            \
     {                                                                   \
-        auto m = _mm_load_ps(arr);                                      \
         return Vec(_mm##BITS##_##NAME##_##IT(m, v.m));                  \
     }
 
 #define OP_VEC_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                     \
     {                                                                   \
-        auto m = _mm_load_ps(arr);
-        auto vv = _mm##
+        auto vv = _mm##BITS##_##NAME_##IT(m, v.m);                      \
+        m = _mm##BITS##_##NAME##_##IT(m, vv);                           \
+        _mm##BITS##_store_##IT(arr, m);                                 \
     }
 
 #define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                             \
     {                                                                   \
-
+        auto vv = _mm##BITS##_set1_##IT(v);                             \
+        return Vec(_mm##BITS##_##NAME##_##IT(m, vv));                   \
     }
 
 #define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                      \
     {                                                                   \
-
+        auto vv = _mm##BITS##_set1_##IT(v);                             \
+        m = _mm##BITS##_##NAME##_##IT(m, vv);                           \
+        _mm##BITS##_store_##IT(arr, m);                                 \
+        return *this;                                                   \
     }
 
 #define OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                  \
     {                                                                   \
-
+        auto vv = _mm##BITS##_set1_##IT(s);                             \
+        return Vec(_mm##BITS##_##NAME##_##IT(vv, v.m));                 \
     }
 
 // Cascaded including, using max bits intrinsic set available

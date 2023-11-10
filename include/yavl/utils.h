@@ -91,50 +91,6 @@ inline void static_for(const Func& func) {
     static_for(func, std::make_integer_sequence<int, N>{});
 }
 
-template <int N, typename Func, typename... Ts>
-struct SplitHelper {
-    static inline void even_split(const Func& func, Ts... args) {
-        static_assert(sizeof...(Ts) % N == 0);
-        constexpr auto div = sizeof...(Ts) / N;
-        SplitHelper<div, Func, Ts...>::even_split(func, args...);
-    }
-};
-
-template <typename Func, typename T1, typename T2, typename... Ts>
-struct SplitHelper<2, Func, T1, T2, Ts...> {
-    static inline void even_split(const Func& func, const T1& t1,
-        const T2& t2, Ts... args)
-    {
-        func(t1, t2);
-        if constexpr (sizeof...(Ts) >= 2)
-            SplitHelper<2, Func, Ts...>::even_split(func, args...);
-    }
-};
-
-template <typename Func, typename T1, typename T2, typename T3,
-    typename... Ts>
-struct SplitHelper<3, Func, T1, T2, T3, Ts...> {
-    static inline void even_split(const Func& func, const T1& t1,
-        const T2& t2, const T3& t3, Ts... args)
-    {
-        func(t1, t2, t3);
-        if constexpr (sizeof...(Ts) >= 3)
-            SplitHelper<3, Func, Ts...>::even_split(func, args...);
-    }
-};
-
-template <typename Func, typename T1, typename T2,
-    typename T3, typename T4, typename... Ts>
-struct SplitHelper<4, Func, T1, T2, T3, T4, Ts...> {
-    static inline void even_split(const Func& func, const T1& t1,
-        const T2& t2, const T3& t3, const T4& t4, Ts... args)
-    {
-        func(t1, t2, t3, t4);
-        if constexpr (sizeof...(Ts) >= 4)
-            SplitHelper<4, Func, Ts...>::even_split(func, args...);
-    }
-};
-
 template <int N, typename... Ts>
 inline auto head(Ts... args) {
     return std::tuple();
@@ -175,6 +131,15 @@ struct dispatch {
     }
 };
 */
+
+template <typename F, typename T0, typename T1, typename T2, typename T3, 
+    typename... Ts>
+inline void apply_by4(const uint32_t i, F&& f, T0&& t0, T1&& t1, T2&& t2,
+    T3&& t3, Ts&&... args)
+{
+    f(i, std::forward(t0), std::forward(t1), std::forward(t2), std::forward(t3));
+    apply_by4(i + 1, std::forward(f), args...);
+}
 
 // Traits
 template <typename T>

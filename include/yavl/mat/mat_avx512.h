@@ -8,15 +8,16 @@ struct Col<float, 4> {
     YAVL_TYPE_ALIAS(T, N, N)
 
     Scalar* arr;
-    __m128 m;
+    __m128 m; // As a cache to save a load for const methods
 
-    Column(Scalar* d) : arr(const_cast<Scalar*>(d)) {}
+    Col(Scalar* d)
+        : arr(const_cast<Scalar*>(d))
+    {
+        m = _mm_load_ps(arr);
+    }
 
     // Operators
-    #define OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                        \
-    {
-        Vec tmp;
-    }
+    YAVL_DEFINE_COL_BASIC_FP_OP(, ps, ps)
 };
 
 template <typename T, uint32_t N>
@@ -98,22 +99,35 @@ struct alignas(64) Mat<float, 4> {
     };
 
     // Ctors
-    YAVL_MAT_VECTORIZED_CTOR(512, ps, __m512, 1);
+    YAVL_MAT_VECTORIZED_CTOR(512, ps, __m512)
 
     template <typename... Ts>
         requires (std::default_initializable<Ts> && ...)
     constexpr Mat(Ts... args) {
-        static_assert(sizeof...(args) == N * N);
+        static_assert(sizeof...(args) == Size2);
         m[0] = _mm512_setr_ps(args...);
     }
 
     // Operators
-    YAVL_DEFINE_MAT_MUL_OP
+    YAVL_DEFINE_MAT_OP
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD
 
     // Matrix manipulation methods
+    auto transpose() const {
+        Mat tmp;
+        auto c0 = _mm512_extractf32x4_ps(m[0], 0);
+        auto c1 = _mm512_extractf32x4_ps(m[0], 1);
+        auto c2 = _mm512_extractf32x4_ps(m[0], 2);
+        auto c3 = _mm512_extractf32x4_ps(m[0], 3);
+        _MM_TRANSPOSE4_PS(c0, c1, c2, c3);
+        _mm_store_ps(tmp.arr, c0);
+        _mm_store_ps(tmp.arr + 4, c1);
+        _mm_store_ps(tmp.arr + 8, c2);
+        _mm_store_ps(tmp.arr + 12, c3);
+        return tmp;
+    }
 };
 
 }

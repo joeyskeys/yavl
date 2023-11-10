@@ -136,6 +136,14 @@ struct Col {
     #undef COL_DOT_COL_EXPRS
 };
 
+#define YAVL_DEFINE_MAT_INDEX_OP                                        \
+    auto operator [](uint32_t idx) {                                    \
+        return Col<Scalar, Size>(&arr[idx * Size]);                     \
+    }                                                                   \
+    auto operator [](uint32_t idx) const {                              \
+        return Col<Scalar, Size>(&arr[idx * Size]);                     \
+    }
+
 #define YAVL_DEFINE_MAT_MUL_OP                                          \
     auto operator *(const Scalar s) const {                             \
         MAT_MUL_SCALAR_EXPRS                                            \
@@ -157,6 +165,10 @@ struct Col {
         *this = tmp;                                                    \
         return *this;                                                   \
     }
+
+#define YAVL_DEFINE_MAT_OP                                              \
+    YAVL_DEFINE_MAT_INDEX_OP                                            \
+    YAVL_DEFINE_MAT_MUL_OP
 
 #define YAVL_DEFINE_DATA_METHOD                                         \
     auto data() {                                                       \
@@ -196,14 +208,6 @@ struct Mat {
     }
 
     // Operators
-    auto operator [](uint32_t idx) {
-        return Col<Scalar, N>(&arr[idx * Size]);
-    }
-
-    auto operator [](uint32_t idx) const {
-        return Col<T, N>(&arr[idx * Size]);
-    }
-
     #define MAT_MUL_SCALAR_EXPRS                                        \
     {                                                                   \
         Mat tmp;                                                        \
@@ -246,7 +250,7 @@ struct Mat {
         return tmp;                                                     \
     }
 
-    YAVL_DEFINE_MAT_MUL_OP
+    YAVL_DEFINE_MAT_OP
 
     #undef MAT_MUL_SCAlAR_EXPRS
     #undef MAT_MUL_ASSIGN_SCALAR_EXPRS
