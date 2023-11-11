@@ -51,7 +51,7 @@ namespace yavl
 #define YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, AT, IT)                 \
     YAVL_DEFINE_OP(BITS, +, AT, add, IT)                                \
     YAVL_DEFINE_OP(BITS, -, AT, sub, IT)                                \
-    YAVL_DEFINE_OP(BITS, *, AT, mul, IT)
+    YAVL_DEFINE_OP(BITS, *, AT, mullo, IT)
 
 #define YAVL_DEFINE_VEC_INDEX_OP                                        \
     Scalar& operator [](const uint32_t i) {                             \
@@ -181,10 +181,10 @@ template <typename T>
 constexpr bool is_int64_v = is_int64<T>::value;
 
 template <typename T>
-using enable_if_int32_t = std::enable_if_t<is_int32_v<T>>;
+using enable_if_int32_t = std::enable_if_t<is_int32_v<T>, int>;
 
 template <typename T>
-using enable_if_int64_t = std::enable_if_t<is_int64_v<T>>;
+using enable_if_int64_t = std::enable_if_t<is_int64_v<T>, int>;
 
 // Types
 struct empty_t {};

@@ -391,7 +391,14 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
     YAVL_VECTORIZED_CTOR(, epi32, __m128i)
 
     // Operators
-    YAVL_DEFINE_VEC_BASIC_INT_OP(, epi32, si128)
+    YAVL_DEFINE_VEC_INDEX_OP
+
+    Vec& operator =(const Vec& b) {
+        _mm_store_si128(&m, b.m);
+        return *this;
+    }
+
+    YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(, Vec, epi32)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -401,8 +408,18 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
 
     YAVL_DEFINE_MISC_FUNCS
 
-// Math funcs
-#define MATH_SUM_EXPRS                                                  \
+    // Geo funcs
+    #define GEO_DOT_EXPRS                                               \
+    {                                                                   \
+        return Vec(_mm_mullo_epi32(m, b.m)).sum();                      \
+    }
+
+    YAVL_DEFINE_GEO_FUNCS
+
+    #undef GEO_DOT_EXPRS
+
+    // Math funcs
+    #define MATH_SUM_EXPRS                                              \
     {                                                                   \
         auto t1 = _mm_hadd_epi32(m, m);                                 \
         auto t2 = _mm_hadd_epi32(t1, t1);                               \
@@ -411,7 +428,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
 
     YAVL_DEFINE_MATH_COMMON_FUNCS(, epi32, epi32)
 
-#undef MATH_SUM_EXPRS
+    #undef MATH_SUM_EXPRS
 };
 
 template <typename I>
@@ -427,7 +444,14 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
     YAVL_VECTORIZED_CTOR(, epi32, __m128i);
 
     // Operators
-    YAVL_DEFINE_VEC_BASIC_INT_OP(, epi32, si128)
+    YAVL_DEFINE_VEC_INDEX_OP
+
+    Vec& operator =(const Vec& b) {
+        _mm_store_si128(&m, b.m);
+        return *this;
+    }
+
+    YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(, Vec, epi32)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -436,6 +460,24 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
     }
 
     YAVL_DEFINE_MISC_FUNCS
+
+    // Geo funcs
+    #define GEO_DOT_EXPRS                                               \
+    {                                                                   \
+        return Vec(_mm_mullo_epi32(m, b.m)).sum();                      \
+    }
+
+    YAVL_DEFINE_GEO_FUNCS
+
+    #undef GEO_DOT_EXPRS
+
+    inline auto cross(const Vec& b) const {
+        auto t1 = shuffle<1, 2, 0>();
+        auto t2 = b.shuffle<2, 0, 1>();
+        auto t3 = shuffle<2, 0, 1>() * b.shuffle<1, 2, 0>();
+        auto ret = _mm_sub_epi32(_mm_mullo_epi32(t1.m , t2.m), t3.m);
+        return Vec(ret);
+    }
 
     // Math funcs
 #define MATH_SUM_EXPRS                                                  \

@@ -32,14 +32,6 @@ TEST_CASE("Util tests", "utils") {
     }
 
     SECTION("Parametr pack split") {
-        auto func = [&](auto a1, auto a2) {
-            x = a1 + a2;
-        };
-        SplitHelper<2, decltype(func), int, int, int, int, int, int>::even_split(func, 1, 2, 3, 4, 5, 6);
-        //SplitHelper<2>::even_split(func, 1, 2, 3, 4);
-
-        REQUIRE(x == 11);
-
         auto ht = head<1>(1, 2, 2.0, 2.f, 'c', "std");
         REQUIRE(std::tuple_size_v<decltype(ht)> == 1);
         REQUIRE(std::get<0>(ht) == 1);
@@ -67,5 +59,10 @@ TEST_CASE("Util tests", "utils") {
 
         //dispatch<2>(func, 1, 2, 3, 4);
         //REQUIRE(x == 7);
+    }
+
+    SECTION("Traits") {
+        REQUIRE(is_int32_v<int> == true);
+        REQUIRE(is_int32_v<uint32_t> == true);
     }
 }

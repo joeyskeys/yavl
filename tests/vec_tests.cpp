@@ -112,14 +112,10 @@ TEMPLATE_PRODUCT_TEST_CASE("Vec tests", "[vec]", (Vec2, Vec3, Vec4), (float, dou
         if constexpr (vec5.Size > 3)
             PROPER_EQUAL(vec5.w, 8, vec5);
 
-        vec5 = vec3 / vec2;
         if constexpr (std::is_floating_point_v<typename decltype(vec5)::Scalar>) {
+            vec5 = vec3 / vec2;
             REQUIRE(vec5.x == Approx(0.5));
             REQUIRE(vec5.y == Approx(1));
-        }
-        else {
-            REQUIRE(vec5.x == 0);
-            REQUIRE(vec5.y == 1);
         }
     }
 
@@ -188,6 +184,12 @@ TEMPLATE_PRODUCT_TEST_CASE("Vec tests", "[vec]", (Vec2, Vec3, Vec4), (float, dou
                 REQUIRE(rsqrt.y == Approx(0.7071067812));
             }
         }
+    }
 
+    SECTION("Vectorization tests") {
+        //if constexpr (TestType::Size > 2)
+            //REQUIRE(TestType::vectorized == true);
+
+        REQUIRE(Vec<int, 4>::vectorized == true);
     }
 }

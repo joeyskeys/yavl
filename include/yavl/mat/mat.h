@@ -360,4 +360,58 @@ struct Mat {
     }
 };
 
+// Mat type aliasing
+template <typename T>
+using Mat2 = Mat<T, 2>;
+
+template <typename T>
+using _Mat2 = Mat<T, 2, false>;
+
+template <typename T>
+using Mat3 = Mat<T, 3>;
+
+template <typename T>
+using _Mat3 = Mat<T, 3, false>;
+
+template <typename T>
+using Mat4 = Mat<T, 4>;
+
+template <typename T>
+using _Mat4 = Mat<T, 4, false>;
+
+template <typename T>
+using Mat2f = Mat2<float>;
+
+template <typename T>
+using Mat2d = Mat2<double>;
+
+template <typename T>
+using Mat2i = Mat2<int>;
+
+template <typename T>
+using Mat2u = Mat2<uint32_t>;
+
+template <typename T>
+using Mat3f = Mat3<float>;
+
+template <typename T>
+using Mat3d = Mat3<double>;
+
+template <typename T>
+using Mat3i = Mat3<int>;
+
+template <typename T>
+using Mat3u = Mat3<uint32_t>;
+
+template <typename T>
+using Mat4f = Mat4<float>;
+
+template <typename T>
+using Mat4d = Mat4<double>;
+
+template <typename T>
+using Mat4i = Mat4<int>;
+
+template <typename T>
+using Mat4u = Mat4<uint32_t>;
 }
