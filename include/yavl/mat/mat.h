@@ -17,26 +17,49 @@ namespace yavl
     YAVL_TYPE_ALIAS(TYPE, N, INTRIN_N)                                  \
     static constexpr uint32_t Size2 = Size * Size;
 
+#define YAVL_DEFINE_COL_MISC_FUNCS                                      \
+    inline auto* data() {                                               \
+        return arr;                                                     \
+    }                                                                   \
+    inline auto* data() const {                                         \
+        return arr;                                                     \
+    }
+
 #define YAVL_DEFINE_COL_BASIC_MISC_OP(BITS, IT)                         \
     YAVL_DEFINE_VEC_INDEX_OP                                            \
     YAVL_DEFINE_COPY_ASSIGN_OP(BITS, Vec, IT)                           \
     YAVL_DEFINE_COPY_ASSIGN_OP(BITS, Col, IT)
 
+#define YAVL_DEFINE_COL_OP(BITS, OP, AT, NAME, IT)                      \
+    YAVL_DEFINE_VEC_OP(BITS, OP, AT, NAME, IT)                          \
+    YAVL_DEFINE_FRIEND_OP(BITS, OP, AT, NAME, IT)
+
+#define YAVL_DEFINE_COL_FP_OP(BITS, AT, IT)                             \
+    YAVL_DEFINE_COL_OP(BITS, +, AT, add, IT)                            \
+    YAVL_DEFINE_COL_OP(BITS, -, AT, sub, IT)                            \
+    YAVL_DEFINE_COL_OP(BITS, *, AT, mul, IT)                            \
+    YAVL_DEFINE_COL_OP(BITS, /, AT, div, IT)
+
+#define YAVL_DEFINE_COL_INT_OP(BITS, AT, IT)                            \
+    YAVL_DEFINE_COL_OP(BITS, +, AT, add, IT)                            \
+    YAVL_DEFINE_COL_OP(BITS, -, AT, sub, IT)                            \
+    YAVL_DEFINE_COL_OP(BITS, *, AT, mullo, IT)
+
 #define YAVL_DEFINE_COL_BASIC_FP_OP(BITS, IT, CMDFIX)                   \
     YAVL_DEFINE_COL_BASIC_MISC_OP(BITS, CMDFIX)                         \
-    YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, Vec, IT)                     \
-    YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, Col, IT)
+    YAVL_DEFINE_FP_ARITHMIC_OP(BITS, Vec, IT)                           \
+    YAVL_DEFINE_COL_FP_OP(BITS, Col, IT)
 
 #define YAVL_DEFINE_COL_BASIC_INT_OP(BITS, IT, CMDFIX)                  \
     YAVL_DEFINE_COL_BASIC_MISC_OP(BITS, CMDFIX)                         \
-    YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, Vec, IT)                    \
-    YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, Col, IT)
+    YAVL_DEFINE_INT_ARITHMIC_OP(BITS, Vec, IT)                          \
+    YAVL_DEFINE_COL_INT_OP(BITS, Col, IT)
 
-#define YAVL_DEFINE_COL_DOT_FUNC(BITS, IT)                              \
-    inline Scalar dot(const Vec& b) const {                             \
+#define YAVL_DEFINE_COL_DOT_FUNC                                        \
+    inline Scalar dot(const Vec<Scalar, Size>& b) const {               \
         COL_DOT_VEC_EXPRS                                               \
     }                                                                   \
-    inline Scalar dot(const Col& b) const {                             \
+    inline Scalar dot(const Col<Scalar, Size>& b) const {               \
         COL_DOT_COL_EXPRS                                               \
     }
 
@@ -44,23 +67,25 @@ namespace yavl
 // colume, behaves like a vector
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
 struct Col {
-    T* arr;
-
     YAVL_TYPE_ALIAS(T, N, N)
 
-    template <typename S>
-    Column(Scalar* d) : arr(const_cast<T*>(d)) {}
+    Scalar* arr;
+
+    Col(const Scalar* d) : arr(const_cast<Scalar*>(d)) {}
+
+    // Miscs
+    YAVL_DEFINE_COL_MISC_FUNCS
 
     // Operators
     #define COPY_ASSIGN_EXPRS(BITS, IT)                                 \
     {                                                                   \
-        std::memcpy(arr, b.arr, sizeof(Scalar) * Size);                 \
+        std::memcpy(arr, b.data(), sizeof(Scalar) * Size);              \
         return *this;                                                   \
     }
 
     #define OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                        \
     {                                                                   \
-        Vec tmp;                                                        \
+        Vec<Scalar, Size> tmp;                                          \
         static_for<Size>([&](const auto i) {                            \
             tmp[i] = arr[i] OP v[i];                                    \
         });                                                             \
@@ -77,7 +102,7 @@ struct Col {
 
     #define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                         \
     {                                                                   \
-        Vec tmp;                                                        \
+        Vec<Scalar, Size> tmp;                                          \
         static_for<Size>([&](const auto i) {                            \
             tmp[i] = arr[i] OP v;                                       \
         });                                                             \
@@ -94,7 +119,7 @@ struct Col {
 
     #define OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)              \
     {                                                                   \
-        Vec tmp;                                                        \
+        Vec<Scalar, Size> tmp;                                          \
         static_for<Size>([&](const auto i) {                            \
             tmp[i] = s OP v[i];                                         \
         });                                                             \
@@ -113,7 +138,7 @@ struct Col {
     bool operator ==(const Vec<T, N>& v) const {
         bool ret = true;
         static_for<Size>([&](const auto i) {
-            ret &= std::abs(v[i] - data[i]) < epsilon<Scalar>;
+            ret &= std::abs(v[i] - arr[i]) < epsilon<Scalar>;
         });
         return ret;
     }
@@ -140,7 +165,7 @@ struct Col {
     auto operator [](uint32_t idx) {                                    \
         return Col<Scalar, Size>(&arr[idx * Size]);                     \
     }                                                                   \
-    auto operator [](uint32_t idx) const {                              \
+    const auto operator [](uint32_t idx) const {                        \
         return Col<Scalar, Size>(&arr[idx * Size]);                     \
     }
 
@@ -151,10 +176,10 @@ struct Col {
     auto operator *=(const Scalar s) {                                  \
         MAT_MUL_ASSIGN_SCALAR_EXPRS                                     \
     }                                                                   \
-    auto operator *(const Vec<Scalar, Size>& vec) const {               \
+    auto operator *(const Vec<Scalar, Size>& v) const {                 \
         MAT_MUL_VEC_EXPRS                                               \
     }                                                                   \
-    auto operator *(const Col<Scalar, Size>& col) const {               \
+    auto operator *(const Col<Scalar, Size>& v) const {                 \
         MAT_MUL_COL_EXPRS                                               \
     }                                                                   \
     auto operator *(const Mat& mat) const {                             \
@@ -217,7 +242,7 @@ struct Mat {
         return tmp;                                                     \
     }
 
-    #define MAT_MUL_ASSIGN_SCAlAR_EXPRS                                 \
+    #define MAT_MUL_ASSIGN_SCALAR_EXPRS                                 \
     {                                                                   \
         for (int i = 0; i < Size2; ++i)                                 \
         static_for<Size2>([&](const auto i) {                           \
@@ -231,11 +256,13 @@ struct Mat {
         Vec<Scalar, Size> tmp;                                          \
         static_for<Size>([&](const auto i) {                            \
             static_for<Size>([&](const auto j) {                        \
-                tmp[i] += arr[j * Size + i] * vec[j];                   \
+                tmp[i] += arr[j * Size + i] * v[j];                     \
             });                                                         \
         });                                                             \
         return tmp;                                                     \
     }
+
+    #define MAT_MUL_COL_EXPRS MAT_MUL_VEC_EXPRS                     
 
     #define MAT_MUL_MAT_EXPRS                                           \
     {                                                                   \
@@ -252,9 +279,10 @@ struct Mat {
 
     YAVL_DEFINE_MAT_OP
 
-    #undef MAT_MUL_SCAlAR_EXPRS
+    #undef MAT_MUL_SCALAR_EXPRS
     #undef MAT_MUL_ASSIGN_SCALAR_EXPRS
     #undef MAT_MUL_VEC_EXPRS
+    #undef MAT_MUL_COL_EXPRS
     #undef MAT_MUL_MAT_EXPRS
     #undef MAT_MUL_ASSIGN_MAT_EXPRS
 

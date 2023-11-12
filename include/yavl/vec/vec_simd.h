@@ -67,9 +67,11 @@
     return Vec(_mm##BITS##_##NAME##_##IT(m, vv));
 
 #define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                      \
-    auto vv = _mm##BITS##_set1_##IT(v);                                 \
-    m = _mm##BITS##_##NAME##_##IT(m, vv);                               \
-    return *this;
+    {                                                                   \
+        auto vv = _mm##BITS##_set1_##IT(v);                             \
+        m = _mm##BITS##_##NAME##_##IT(m, vv);                           \
+        return *this;                                                   \
+    }
 
 #define OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                  \
     auto vv = _mm##BITS##_set1_##IT(s);                                 \
@@ -167,7 +169,12 @@ namespace detail
     #include <yavl/vec/vec_avx2.h>
 #endif
 
+#undef COPY_ASSIGN_EXPRS
+#undef OP_VEC_EXPRS
+#undef OP_VEC_ASSIGN_EXPRS
+#undef OP_SCALAR_EXPRS
+#undef OP_SCALAR_ASSIGN_EXPRS
+#undef OP_FRIEND_SCALAR_EXPRS
 #undef MISC_SHUFFLE_EXPRS
-
 #undef MATH_LERP_SCALAR_EXPRS
 #undef MATH_LERP_VEC_EXPRS

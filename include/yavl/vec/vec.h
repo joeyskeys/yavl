@@ -122,7 +122,7 @@ struct Vec {
         return tmp;                                                     \
     }
 
-    YAVL_DEFINE_VEC_BASIC_FP_OP( , , )
+    YAVL_DEFINE_VEC_FP_OP( , , )
 
 #undef COPY_ASSIGN_EXPRS
 #undef OP_VEC_EXPRS
@@ -141,6 +141,12 @@ struct Vec {
     }
 
 #define YAVL_DEFINE_MISC_FUNCS                                          \
+    inline auto* data() {                                               \
+        return arr.data();                                              \
+    }                                                                   \
+    inline auto* data() const {                                         \
+        return arr.data();                                              \
+    }                                                                   \
     MISC_SHUFFLE_FUNC
 
     template <int ...Is>

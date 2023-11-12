@@ -17,10 +17,10 @@ namespace yavl
     static constexpr uint32_t BitSize = sizeof(Scalar) * N * 8;
 
 #define YAVL_DEFINE_VEC_OP(BITS, OP, AT, NAME, IT)                      \
-    auto operator OP(const AT& v) const {                               \
+    auto operator OP(const AT<Scalar, Size>& v) const {                 \
         OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                            \
     }                                                                   \
-    auto operator OP##=(const AT& v) {                                  \
+    auto operator OP##=(const AT<Scalar, Size>& v) {                    \
         OP_VEC_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                     \
     }
 
@@ -33,25 +33,39 @@ namespace yavl
     }
 
 #define YAVL_DEFINE_FRIEND_OP(BITS, OP, AT, NAME, IT)                   \
-    friend auto operator OP(const Scalar s, const AT& v) {              \
+    friend auto operator OP(const Scalar s, const AT<Scalar, Size>& v) { \
         OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                  \
     }
 
 #define YAVL_DEFINE_OP(BITS, OP, AT, NAME, IT)                          \
     YAVL_DEFINE_VEC_OP(BITS, OP, AT, NAME, IT)                          \
     YAVL_DEFINE_SCALAR_OP(BITS, OP, NAME, IT)                           \
+
+#define YAVL_DEFINE_OP_WITH_FRIEND(BITS, OP, AT, NAME, IT)              \
+    YAVL_DEFINE_OP(BITS, OP, AT, NAME, IT)                              \
     YAVL_DEFINE_FRIEND_OP(BITS, OP, AT, NAME, IT)
 
-#define YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, AT, IT)                  \
+#define YAVL_DEFINE_FP_ARITHMIC_OP(BITS, AT, IT)                        \
     YAVL_DEFINE_OP(BITS, +, AT, add, IT)                                \
     YAVL_DEFINE_OP(BITS, -, AT, sub, IT)                                \
     YAVL_DEFINE_OP(BITS, *, AT, mul, IT)                                \
     YAVL_DEFINE_OP(BITS, /, AT, div, IT)
 
-#define YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, AT, IT)                 \
+#define YAVL_DEFINE_FP_ARITHMIC_OP_WITH_FRIEND(BITS, AT, IT)            \
+    YAVL_DEFINE_OP_WITH_FRIEND(BITS, +, AT, add, IT)                    \
+    YAVL_DEFINE_OP_WITH_FRIEND(BITS, -, AT, sub, IT)                    \
+    YAVL_DEFINE_OP_WITH_FRIEND(BITS, *, AT, mul, IT)                    \
+    YAVL_DEFINE_OP_WITH_FRIEND(BITS, /, AT, div, IT)
+
+#define YAVL_DEFINE_INT_ARITHMIC_OP(BITS, AT, IT)                       \
     YAVL_DEFINE_OP(BITS, +, AT, add, IT)                                \
     YAVL_DEFINE_OP(BITS, -, AT, sub, IT)                                \
     YAVL_DEFINE_OP(BITS, *, AT, mullo, IT)
+
+#define YAVL_DEFINE_INT_ARITHMIC_OP_WITH_FRIEND(BITS, AT, IT)           \
+    YAVL_DEFINE_OP_WITH_FRIEND(BITS, +, AT, add, IT)                    \
+    YAVL_DEFINE_OP_WITH_FRIEND(BITS, -, AT, sub, IT)                    \
+    YAVL_DEFINE_OP_WITH_FRIEND(BITS, *, AT, mullo, IT)
 
 #define YAVL_DEFINE_VEC_INDEX_OP                                        \
     Scalar& operator [](const uint32_t i) {                             \
@@ -64,21 +78,21 @@ namespace yavl
     }
 
 #define YAVL_DEFINE_COPY_ASSIGN_OP(BITS, AT, IT)                        \
-    Vec& operator =(const AT& b) {                                      \
+    auto& operator =(const AT<Scalar, Size>& b) {                       \
         COPY_ASSIGN_EXPRS(BITS, IT)                                     \
     }
 
-#define YAVL_DEFINE_VEC_BASIC_MISC_OP(BITS, IT)                         \
+#define YAVL_DEFINE_VEC_MISC_OP(BITS, IT)                               \
     YAVL_DEFINE_VEC_INDEX_OP                                            \
     YAVL_DEFINE_COPY_ASSIGN_OP(BITS, Vec, IT)
 
-#define YAVL_DEFINE_VEC_BASIC_FP_OP(BITS, IT, CMD_SUFFIX)               \
-    YAVL_DEFINE_VEC_BASIC_MISC_OP(BITS, CMD_SUFFIX)                     \
-    YAVL_DEFINE_BASIC_FP_ARITHMIC_OP(BITS, Vec, IT)
+#define YAVL_DEFINE_VEC_FP_OP(BITS, IT, CMD_SUFFIX)                     \
+    YAVL_DEFINE_VEC_MISC_OP(BITS, CMD_SUFFIX)                           \
+    YAVL_DEFINE_FP_ARITHMIC_OP_WITH_FRIEND(BITS, Vec, IT)
 
-#define YAVL_DEFINE_VEC_BASIC_INT_OP(BITS, IT, CMD_SUFFIX)              \
-    YAVL_DEFINE_VEC_BASIC_MISC_OP(BITS, CMD_SUFFIX)                     \
-    YAVL_DEFINE_BASIC_INT_ARITHMIC_OP(BITS, Vec, IT)
+#define YAVL_DEFINE_VEC_INT_OP(BITS, IT, CMD_SUFFIX)                    \
+    YAVL_DEFINE_VEC_MISC_OP(BITS, CMD_SUFFIX)                           \
+    YAVL_DEFINE_INT_ARITHMIC_OP_WITH_FRIEND(BITS, Vec, IT)
 
 // Templates
 template <int... indices, typename Func>

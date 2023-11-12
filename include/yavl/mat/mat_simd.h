@@ -1,10 +1,8 @@
 #pragma once
 
-#include <yavl/vec/vec_simd.h>
-
 // Common macros
 #define YAVL_MAT_ALIAS_VECTORIZED(TYPE, N, INTRIN_N, REGI_N)            \
-    YAVL_MAT_ALIAS(TYPE, N, INTIRN_N)                                   \
+    YAVL_MAT_ALIAS(TYPE, N, INTRIN_N)                                   \
     static constexpr uint32_t MSize = REGI_N;                           \
     static constexpr bool vectorized = true;
 
@@ -43,12 +41,12 @@
 
 #define OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                            \
     {                                                                   \
-        return Vec(_mm##BITS##_##NAME##_##IT(m, v.m));                  \
+        return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(m, v.m));    \
     }
 
 #define OP_VEC_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                     \
     {                                                                   \
-        auto vv = _mm##BITS##_##NAME_##IT(m, v.m);                      \
+        auto vv = _mm##BITS##_##NAME##_##IT(m, v.m);                    \
         m = _mm##BITS##_##NAME##_##IT(m, vv);                           \
         _mm##BITS##_store_##IT(arr, m);                                 \
     }
@@ -56,7 +54,7 @@
 #define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                             \
     {                                                                   \
         auto vv = _mm##BITS##_set1_##IT(v);                             \
-        return Vec(_mm##BITS##_##NAME##_##IT(m, vv));                   \
+        return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(m, vv));     \
     }
 
 #define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                      \
@@ -70,7 +68,7 @@
 #define OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                  \
     {                                                                   \
         auto vv = _mm##BITS##_set1_##IT(s);                             \
-        return Vec(_mm##BITS##_##NAME##_##IT(vv, v.m));                 \
+        return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(vv, v.m));   \
     }
 
 // Cascaded including, using max bits intrinsic set available
@@ -83,9 +81,10 @@
     #include <yavl/mat/mat_sse42.h>
 #endif
 
-namespace yavl
-{
-
-// Mat type aliasing
-
-}
+#undef MAT_MUL_SCAlAR_EXPRS
+#undef MAT_MUL_ASSIGN_SCALAR_EXPRS
+#undef OP_VEC_EXPRS
+#undef OP_VEC_ASSIGN_EXPRS
+#undef OP_SCALAR_EXPRS
+#undef OP_SCALAR_ASSIGN_EXPRS
+#undef OP_FRIEND_SCALAR_EXPRS

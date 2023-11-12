@@ -5,16 +5,19 @@ namespace yavl
 
 template <>
 struct Col<float, 4> {
-    YAVL_TYPE_ALIAS(T, N, N)
+    YAVL_MAT_ALIAS(float, 4, 4)
 
     Scalar* arr;
     __m128 m;
 
-    Col(Scalar* d)
+    Col(const Scalar* d)
         : arr(const_cast<Scalar*>(d))
     {
         m = _mm_load_ps(arr);
     }
+
+    // Miscs
+    YAVL_DEFINE_COL_MISC_FUNCS
 
     // Operators
     YAVL_DEFINE_COL_BASIC_FP_OP(, ps, ps)
@@ -25,7 +28,7 @@ struct alignas(16) Mat<float, 4> {
     YAVL_MAT_ALIAS_VECTORIZED(float, 4, 4, 4)
 
     union {
-        std::array<Scalar, 16>;
+        std::array<Scalar, 16> arr;
         __m128 m[MSize];
     };
 
