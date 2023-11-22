@@ -3,6 +3,32 @@
 namespace yavl
 {
 
+template <typename T, uint32_t N>
+static inline Vec<T, N> sse42_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
+    // Check comments in avx512 impl
+    Vec<T, N> tmp;
+    static_for<typename Mat<T, N>::MSize>([&](const auto i) {
+        if constexpr (std::is_floating_point_v<T>) {
+            tmp.m = _mm_fmadd_ps(mat.m[i], vec.m, tmp.m);
+        }
+        else {
+            tmp.arr[i] = Vec<T, N>(_mm_mul_epi32(mat.m[i], vec.m).sum());
+        }
+    });
+    return tmp;
+}
+
+#define MAT_MUL_VEC_EXPRS                                               \
+    {                                                                   \
+        return sse42_mat_mul_vec_32_impl(*this, v);                     \
+    }
+
+#define MAT_MUL_COL_EXPRS                                               \
+    {                                                                   \
+        auto vm = _mm_load_ps(v.arr);                                   \
+        return sse42_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>(vm)); \
+    }
+
 template <>
 struct Col<float, 4> {
     YAVL_MAT_ALIAS(float, 4, 4)
@@ -48,7 +74,7 @@ struct alignas(16) Mat<float, 4> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP
+    YAVL_DEFINE_MAT_OP(, ps)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD

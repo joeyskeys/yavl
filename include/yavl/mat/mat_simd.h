@@ -20,21 +20,21 @@
         });                                                             \
     }
 
-#define MAT_MUL_SCALAR_EXPRS                                            \
+#define MAT_MUL_SCALAR_EXPRS(BITS, IT)                                  \
     {                                                                   \
         Mat tmp;                                                        \
         auto vs = _mm##BITS##_set1_##IT(s);                             \
         static_for<MSize>([&](const auto i) {                           \
-            tmp.m[i] = _mm##BITS##_mul_##IT(vs);                        \
+            tmp.m[i] = _mm##BITS##_mul_##IT(m[i], vs);                  \
         });                                                             \
         return tmp;                                                     \
     }
 
-#define MAT_MUL_ASSIGN_SCALAR_EXPRS                                     \
+#define MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT)                           \
     {                                                                   \
         auto vs = _mm##BITS##_set1_##IT(s);                             \
         static_for<MSize>([&](const auto i) {                           \
-            m[i] = _mm##BITS##_mul_##IT(vs);                            \
+            m[i] = _mm##BITS##_mul_##IT(m[i], vs);                      \
         });                                                             \
         return *this;                                                   \
     }

@@ -21,7 +21,7 @@ struct Col<float, 4> {
 };
 
 template <typename T, uint32_t N>
-inline Vec<T, N> mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
+static inline Vec<T, N> avx512_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
     // 1. Two possible impl for mat vec/col multiplication
     // Need further benchmark to pick out one
     // (According to Intel doc, the second one maybe slightly better,
@@ -40,10 +40,8 @@ inline Vec<T, N> mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec)
                     arr[12 + i]);
                 tmp.arr[i] = _mm_cvtss_f32(_mm_dp_ps(row, vec.m, 0b11110001));
                 /*
-                static_for<Mat<T, N>::Size>([&](const auto i) {
-                    tmp.m = _mm_fmadd_ps(_mm512_extractf32x4_ps(mat.m[0], i),
-                        vec.m, tmp.m);
-                });
+                tmp.m = _mm_fmadd_ps(_mm512_extractf32x4_ps(mat.m[0], i),
+                    vec.m, tmp.m);
                 */
             }
             else if constexpr (Vec<T, N>::Size == 3) {
@@ -62,13 +60,13 @@ inline Vec<T, N> mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec)
 
 #define MAT_MUL_VEC_EXPRS                                           \
     {                                                               \
-        return mat_mul_vec_32_impl(*this, vec);                     \
+        return avx512_mat_mul_vec_32_impl(*this, v);                \
     }
 
 #define MAT_MUL_COL_EXPRS                                           \
     {                                                               \
-        auto vm = _mm_load_ps(col.arr);                             \
-        return mat_mul_vec_32_impl(*this, Vec<T, N>(vm));           \
+        auto vm = _mm_load_ps(v.arr);                               \
+        return avx512_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>(vm)); \
     }
 
 #define MAT_MUL_MAT_EXPRS                                           \
@@ -109,7 +107,7 @@ struct alignas(64) Mat<float, 4> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP
+    YAVL_DEFINE_MAT_OP(512, ps)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD

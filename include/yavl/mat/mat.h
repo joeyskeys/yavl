@@ -169,12 +169,12 @@ struct Col {
         return Col<Scalar, Size>(&arr[idx * Size]);                     \
     }
 
-#define YAVL_DEFINE_MAT_MUL_OP                                          \
+#define YAVL_DEFINE_MAT_MUL_OP(BITS, IT)                                \
     auto operator *(const Scalar s) const {                             \
-        MAT_MUL_SCALAR_EXPRS                                            \
+        MAT_MUL_SCALAR_EXPRS(BITS, IT)                                  \
     }                                                                   \
     auto operator *=(const Scalar s) {                                  \
-        MAT_MUL_ASSIGN_SCALAR_EXPRS                                     \
+        MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT)                           \
     }                                                                   \
     auto operator *(const Vec<Scalar, Size>& v) const {                 \
         MAT_MUL_VEC_EXPRS                                               \
@@ -191,9 +191,9 @@ struct Col {
         return *this;                                                   \
     }
 
-#define YAVL_DEFINE_MAT_OP                                              \
+#define YAVL_DEFINE_MAT_OP(BITS, IT)                                    \
     YAVL_DEFINE_MAT_INDEX_OP                                            \
-    YAVL_DEFINE_MAT_MUL_OP
+    YAVL_DEFINE_MAT_MUL_OP(BITS, IT)
 
 #define YAVL_DEFINE_DATA_METHOD                                         \
     auto data() {                                                       \
@@ -233,7 +233,7 @@ struct Mat {
     }
 
     // Operators
-    #define MAT_MUL_SCALAR_EXPRS                                        \
+    #define MAT_MUL_SCALAR_EXPRS(BITS, IT)                              \
     {                                                                   \
         Mat tmp;                                                        \
         static_for<Size2>([&](const auto i) {                           \
@@ -242,7 +242,7 @@ struct Mat {
         return tmp;                                                     \
     }
 
-    #define MAT_MUL_ASSIGN_SCALAR_EXPRS                                 \
+    #define MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT)                       \
     {                                                                   \
         for (int i = 0; i < Size2; ++i)                                 \
         static_for<Size2>([&](const auto i) {                           \
@@ -277,7 +277,7 @@ struct Mat {
         return tmp;                                                     \
     }
 
-    YAVL_DEFINE_MAT_OP
+    YAVL_DEFINE_MAT_OP(, )
 
     #undef MAT_MUL_SCALAR_EXPRS
     #undef MAT_MUL_ASSIGN_SCALAR_EXPRS
