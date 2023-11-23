@@ -7,7 +7,7 @@ template <typename T, uint32_t N>
 static inline Vec<T, N> sse42_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
     // Check comments in avx512 impl
     Vec<T, N> tmp;
-    static_for<typename Mat<T, N>::MSize>([&](const auto i) {
+    static_for<Mat<T, N>::MSize>([&](const auto i) {
         if constexpr (std::is_floating_point_v<T>) {
             tmp.m = _mm_fmadd_ps(mat.m[i], vec.m, tmp.m);
         }
@@ -19,15 +19,26 @@ static inline Vec<T, N> sse42_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Ve
 }
 
 #define MAT_MUL_VEC_EXPRS                                               \
-    {                                                                   \
-        return sse42_mat_mul_vec_32_impl(*this, v);                     \
-    }
+{                                                                       \
+    return sse42_mat_mul_vec_32_impl(*this, v);                         \
+}
 
 #define MAT_MUL_COL_EXPRS                                               \
-    {                                                                   \
-        auto vm = _mm_load_ps(v.arr);                                   \
-        return sse42_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>(vm)); \
-    }
+{                                                                       \
+    auto vm = _mm_load_ps(v.arr);                                       \
+    return sse42_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>(vm));     \
+}
+
+#define MAT_MUL_MAT_EXPRS                                               \
+{                                                                       \
+    Mat tmp;                                                            \
+    static_for<Size>([&](const auto i) {                                \
+        static_for<Size>([&](const auto j) {                            \
+            tmp.m[i] = _mm_fmadd_ps(tmp.m[i], m[j], mat.m[i]);          \
+        });                                                             \
+    });                                                                 \
+    return tmp;                                                         \
+}
 
 template <>
 struct Col<float, 4> {

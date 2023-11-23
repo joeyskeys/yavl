@@ -33,7 +33,7 @@ static inline Vec<T, N> avx512_mat_mul_vec_32_impl(const Mat<T, N>& mat, const V
     // put each impl into specific class or use if constexpr to wrap
     // up all the possible situation?
     Vec<T, N> tmp;
-    static_for<typename Mat<T, N>::MSize>([&](const auto i) {
+    static_for<Mat<T, N>::MSize>([&](const auto i) {
         if constexpr (std::is_floating_point_v<T>) {
             if constexpr (Vec<T, N>::Size == 4) {
                 auto row = _mm_setr_ps(arr[i], arr[4 + i], arr[8 + i],
@@ -59,31 +59,31 @@ static inline Vec<T, N> avx512_mat_mul_vec_32_impl(const Mat<T, N>& mat, const V
 }
 
 #define MAT_MUL_VEC_EXPRS                                           \
-    {                                                               \
-        return avx512_mat_mul_vec_32_impl(*this, v);                \
-    }
+{                                                                   \
+    return avx512_mat_mul_vec_32_impl(*this, v);                    \
+}
 
 #define MAT_MUL_COL_EXPRS                                           \
-    {                                                               \
-        auto vm = _mm_load_ps(v.arr);                               \
-        return avx512_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>(vm)); \
-    }
+{                                                                   \
+    auto vm = _mm_load_ps(v.arr);                                   \
+    return avx512_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>(vm)); \
+}
 
 #define MAT_MUL_MAT_EXPRS                                           \
-    {                                                               \
-        Mat tmp;                                                    \
-        static_for<Size>([&](const auto i) {                        \
-            Vec<T, N> curv{};                                       \
-            static_for<Size>([&](const auto j) {                    \
-                /*auto tmpv = operator[](j) * mat[i];*/             \
-                auto lv = _mm_load_ps(operator[](j).arr);           \
-                auto rv = _mm_load_ps(mat[i].arr);                  \
-                curv.m = _mm_fmadd_ps(curv.m, lv, rv);              \
-            });                                                     \
-            _mm_store_ps(&tmp.arr[i << 2], curv.m);                 \
+{                                                                   \
+    Mat tmp;                                                        \
+    static_for<Size>([&](const auto i) {                            \
+        Vec<T, N> curv{};                                           \
+        static_for<Size>([&](const auto j) {                        \
+            /*auto tmpv = operator[](j) * mat[i];*/                 \
+            auto lv = _mm_load_ps(operator[](j).arr);               \
+            auto rv = _mm_load_ps(mat[i].arr);                      \
+            curv.m = _mm_fmadd_ps(curv.m, lv, rv);                  \
         });                                                         \
-        return tmp;                                                 \
-    }
+        _mm_store_ps(&tmp.arr[i << 2], curv.m);                     \
+    });                                                             \
+    return tmp;                                                     \
+}
 
 template <>
 struct alignas(64) Mat<float, 4> {

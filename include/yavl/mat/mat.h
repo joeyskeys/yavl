@@ -217,18 +217,22 @@ struct Mat {
             (sizeof...(Ts) == Size2 && (true && ... && std::is_arithmetic_v<Ts>)) ||
             (sizeof...(Ts) == Size &&
                 ((true && ... && std::is_same_v<Ts, Vec<float, Size>>) ||
-                (true && ... && std::is_same_v<Ts, Vec<double, Size>>))));
+                (true && ... && std::is_same_v<Ts, Vec<double, Size>>))) ||
+            (sizeof...(Ts) == 1 && (true && ... && std::is_convertible_v<Ts, Scalar>)));
 
         if constexpr (sizeof...(Ts) == Size2) {
             arr = { static_cast<T>(args)... };
         }
-        else {
+        else if constexpr (sizeof...(Ts) == Size) {
             int i = 0;
             auto unwrap = [&](uint32_t i, auto v) {
                 for (int j = 0; auto const& ve : v.arr)
                     arr[N * i + j++] = ve;
             };
             (unwrap(i++, args), ...);
+        }
+        else {
+            arr.fill(static_cast<Scalar>(args)...);
         }
     }
 
