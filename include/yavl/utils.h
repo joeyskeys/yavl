@@ -146,13 +146,19 @@ struct dispatch {
 };
 */
 
+template <typename F, typename... Ts>
+inline void apply_by4(const uint32_t i, const F& f, Ts&&... args) {
+    return;
+}
+
 template <typename F, typename T0, typename T1, typename T2, typename T3, 
     typename... Ts>
-inline void apply_by4(const uint32_t i, F&& f, T0&& t0, T1&& t1, T2&& t2,
+inline void apply_by4(const uint32_t i, const F& f, T0&& t0, T1&& t1, T2&& t2,
     T3&& t3, Ts&&... args)
 {
-    f(i, std::forward(t0), std::forward(t1), std::forward(t2), std::forward(t3));
-    apply_by4(i + 1, std::forward(f), args...);
+    f(i, std::forward<T0>(t0), std::forward<T1>(t1), std::forward<T2>(t2),
+        std::forward<T3>(t3));
+    apply_by4(i + 1, f, args...);
 }
 
 // Traits

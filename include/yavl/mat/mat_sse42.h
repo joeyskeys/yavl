@@ -9,7 +9,8 @@ static inline Vec<T, N> sse42_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Ve
     Vec<T, N> tmp;
     static_for<Mat<T, N>::MSize>([&](const auto i) {
         if constexpr (std::is_floating_point_v<T>) {
-            tmp.m = _mm_fmadd_ps(mat.m[i], vec.m, tmp.m);
+            auto vm = _mm_set1_ps(vec[i]);
+            tmp.m = _mm_fmadd_ps(mat.m[i], vm, tmp.m);
         }
         else {
             tmp.arr[i] = Vec<T, N>(_mm_mul_epi32(mat.m[i], vec.m).sum());
@@ -34,7 +35,8 @@ static inline Vec<T, N> sse42_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Ve
     Mat tmp;                                                            \
     static_for<Size>([&](const auto i) {                                \
         static_for<Size>([&](const auto j) {                            \
-            tmp.m[i] = _mm_fmadd_ps(tmp.m[i], m[j], mat.m[i]);          \
+            auto bij = _mm_set1_ps(mat[i][j]);                          \
+            tmp.m[i] = _mm_fmadd_ps(m[j], bij, tmp.m[i]);               \
         });                                                             \
     });                                                                 \
     return tmp;                                                         \

@@ -248,7 +248,6 @@ struct Mat {
 
     #define MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT)                       \
     {                                                                   \
-        for (int i = 0; i < Size2; ++i)                                 \
         static_for<Size2>([&](const auto i) {                           \
             arr[i] *= s;                                                \
         });                                                             \
