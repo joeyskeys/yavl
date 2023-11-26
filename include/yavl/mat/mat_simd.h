@@ -71,6 +71,22 @@
         return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(vv, v.m));   \
     }
 
+// Common methods
+namespace detail
+{
+
+static inline Vec<float, 2> mat2_mul_vec_f32(const Mat<float, 2>& mat,
+    const Vec<float, 2>& vec)
+{
+    auto tmpv4a = Vec<float, 4>(mat.m[0]);
+    auto tmpv4b = Vec<float, 4>(vec[0], vec[0], vec[1], vec[1]);
+    auto vm = (tmpv4a * tmpv4b).shuffle<0, 2, 1, 3>().m;
+    tmpv4a = Vec<float, 4>(_mm_hadd_ps(vm, vm));
+    return Vec<float, 2>(tmpv4a[0], tmpv4a[1]);
+}
+
+}
+
 // Cascaded including, using max bits intrinsic set available
 #if defined(YAVL_X86_AVX512ER)
     #include <yavl/mat/mat_avx512.h>

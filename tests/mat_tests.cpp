@@ -110,6 +110,22 @@ TEMPLATE_PRODUCT_TEST_CASE("Mat tests", "[mat]", (Mat2, Mat3, Mat4), (float, dou
         }
     }
 
+    SECTION("Method tests") {
+        auto mat3 = mat2.transpose();
+        if constexpr (TestType::Size == 2) {
+            PROPER_EQUAL(mat3.arr[3], 3, mat3);
+            PROPER_EQUAL(mat3.arr[2], 1, mat3);
+        }
+        else if constexpr (TestType::Size == 3) {
+            PROPER_EQUAL(mat3.arr[4], 4, mat3);
+            PROPER_EQUAL(mat3.arr[3], 1, mat3);
+        }
+        else {
+            PROPER_EQUAL(mat3.arr[5], 5, mat3);
+            PROPER_EQUAL(mat3.arr[4], 1, mat3);
+        }
+    }
+
     SECTION("Vectorization tests") {
         if constexpr (is_float_v<typename TestType::Scalar> && TestType::Size == 4)
             REQUIRE(TestType::vectorized == true);

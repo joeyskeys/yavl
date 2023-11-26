@@ -94,6 +94,12 @@ namespace yavl
     YAVL_DEFINE_VEC_MISC_OP(BITS, CMD_SUFFIX)                           \
     YAVL_DEFINE_INT_ARITHMIC_OP_WITH_FRIEND(BITS, Vec, IT)
 
+#define YAVL_DEFINE_MAT_UNION(IT)                                       \
+    union {                                                             \
+        std::array<Scalar, IntrinSize * MSize> arr;                     \
+        IT m[MSize];                                                    \
+    };
+
 // Templates
 template <int... indices, typename Func>
 inline void static_for(const Func& func, std::integer_sequence<int, indices...> sequence) {
@@ -132,19 +138,18 @@ inline auto tail(Ts... args) {
     return skip<sizeof...(Ts) - N>(args...);
 }
 
-/*
-struct dispatch {
-    template <int N>
-    void operator()(const auto& func, auto... args) {
-        static_assert(sizeof...(args) > 0 && sizeof...(args) % N == 0);
-        std::apply(func, head<N>(args...));
-        if constexpr (sizeof...(args) > 0 && sizeof...(args) >= N + N) {
-            std::apply(dispatch, std::tuple_cat(
-                std::make_tuple(func), tail<sizeof...(args) - N>(args...)));
-        }
-    }
-};
-*/
+template <typename F, typename... Ts>
+inline void apply_by3(const uint32_t i, const F& f, Ts&&... args) {
+    return;
+}
+
+template <typename F, typename T0, typename T1, typename T2, typename... Ts>
+inline void apply_by3(const uint32_t i, const F& f, T0&& t0, T1&& t1, T2&& t2,
+    Ts&&... args)
+{
+    f(i, std::forward<T0>(t0), std::forward<T1>(t1), std::forward<T2>(t2));
+    apply_by3(i + 1, f, args...);
+}
 
 template <typename F, typename... Ts>
 inline void apply_by4(const uint32_t i, const F& f, Ts&&... args) {

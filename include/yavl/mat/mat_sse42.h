@@ -7,15 +7,21 @@ template <typename T, uint32_t N>
 static inline Vec<T, N> sse42_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
     // Check comments in avx512 impl
     Vec<T, N> tmp;
-    static_for<Mat<T, N>::MSize>([&](const auto i) {
-        if constexpr (std::is_floating_point_v<T>) {
-            auto vm = _mm_set1_ps(vec[i]);
-            tmp.m = _mm_fmadd_ps(mat.m[i], vm, tmp.m);
-        }
-        else {
-            tmp.arr[i] = Vec<T, N>(_mm_mul_epi32(mat.m[i], vec.m).sum());
-        }
-    });
+    if constexpr (N == 2) {
+        // TODO : integeters
+        tmp = mat2_mul_vec_f32(mat, vec);
+    }
+    else {
+        static_for<Mat<T, N>::MSize>([&](const auto i) {
+            if constexpr (std::is_floating_point_v<T>) {
+                auto vm = _mm_set1_ps(vec[i]);
+                tmp.m = _mm_fmadd_ps(mat.m[i], vm, tmp.m);
+            }
+            else {
+                tmp.arr[i] = Vec<T, N>(_mm_mul_epi32(mat.m[i], vec.m).sum());
+            }
+        });
+    }
     return tmp;
 }
 
@@ -26,8 +32,10 @@ static inline Vec<T, N> sse42_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Ve
 
 #define MAT_MUL_COL_EXPRS                                               \
 {                                                                       \
-    auto vm = _mm_load_ps(v.arr);                                       \
-    return sse42_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>(vm));     \
+    if constexpr (Size == 2)                                            \
+        return sse42_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>{v[0], v[1]}) \
+    else                                                                \
+        return sse42_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>(v.m)); \
 }
 
 #define MAT_MUL_MAT_EXPRS                                               \
@@ -66,10 +74,7 @@ template <>
 struct alignas(16) Mat<float, 4> {
     YAVL_MAT_ALIAS_VECTORIZED(float, 4, 4, 4)
 
-    union {
-        std::array<Scalar, 16> arr;
-        __m128 m[MSize];
-    };
+    YAVL_DEFINE_MAT_UNION(__m128)
 
     // Ctors
     YAVL_MAT_VECTORIZED_CTOR(, ps, __m128)
@@ -103,5 +108,114 @@ struct alignas(16) Mat<float, 4> {
         return tmp;
     }
 };
+
+template <>
+struct Col<float, 3> {
+    YAVL_MAT_ALIAS(float, 3, 4)
+
+    Scalar* arr;
+    __m128 m;
+
+    Col(const Scalar* d)
+        : arr(const_cast<Scalar*>(d))
+    {
+        m = _mm_setr_ps(arr[0], arr[1], arr[2], 0);
+    }
+
+    // Miscs
+    YAVL_DEFINE_COL_MISC_FUNCS
+
+    // Operators
+    YAVL_DEFINE_COL_BASIC_FP_OP(, ps, ps)
+};
+
+template <>
+struct alignas(16) Mat<float, 3> {
+    YAVL_MAT_ALIAS_VECTORIZED(float, 3, 4, 3)
+
+    YAVL_DEFINE_MAT_UNION(__m128)
+    
+    // Ctors
+    YAVL_MAT_VECTORIZED_CTOR(, ps, __m128)
+
+    template <typename... Ts>
+        requires (std::default_initializable<Ts> && ...)
+    constexpr Mat(Ts... args) {
+        static_assert(sizeof...(args) == Size2);
+        auto setf = [&](const uint32_t i, const auto t0, const auto t1,
+            const auto t2)
+        {
+            m[i] = _mm_setr_ps(t0, t1, t2, 0);
+        };
+        apply_by3(0, setf, args...);
+    }
+
+    // Operators
+    YAVL_DEFINE_MAT_OP(, ps)
+
+    // Misc funcs
+    YAVL_DEFINE_DATA_METHOD
+
+    // Matrix manipulation methods
+    auto transpose() const {
+        Mat<Scalar, 4> tmp4;
+        tmp.m[0] = m[0];
+        tmp.m[1] = m[1];
+        tmp.m[2] = m[2];
+        _MM_TRANSPOSE4_PS(tmp.m[0], tmp.m[1], tmp.m[2], tmp.m[3]);
+        Mat tmp;
+        tmp.m[0] = tmp4.m[0];
+        tmp.m[1] = tmp4.m[1];
+        tmp.m[2] = tmp4.m[2];
+        return tmp;
+    }
+};
+
+#undef MAT_MUL_MAT_EXPRS
+
+#define MAT_MUL_MAT_EXPRS                                               \
+{                                                                       \
+    Mat tmp;                                                            \
+    auto tmpv4a = Vec<Scalar, 4>(m[0]);                                 \
+    auto tmpv4b = Vec<Scalar, 4>(mat.m[0]);                             \
+    auto v1 = tmpv4a * tmpv4b.shuffle<0, 0, 1, 1>();                    \
+    auto v2 = tmpv4a * tmpv4b.shuffle<2, 2, 3, 3>();                    \
+    tmp.m[0] = _mm_hadd_ps(v1.shuffle<0, 2, 1, 3>(), v2.shuffle<0, 2, 1, 3>()); \
+    return tmp;
+}
+
+template <>
+struct alignas(16) Mat<float, 2> {
+    YAVL_MAT_ALIAS_VECTORIZED(float, 2, 4, 1)
+
+    YAVL_DEFINE_MAT_UNION(__m128)
+
+    // Ctors
+    YAVL_MAT_VECTORIZED_CTOR(, ps, __m128)
+
+    template <typename... Ts>
+        requires (std::default_initializable<Ts> && ...)
+    constexpr Mat(Ts... args) {
+        static_assert(sizeof...(args) == Size2);
+        m[0] = _mm_setr_ps(args...);
+    }
+
+    // Operators
+    YAVL_DEFINE_MAT_OP(, ps)
+
+    // Misc funcs
+    YAVL_DEFINE_DATA_METHOD
+
+    // Matrix manipulation methods
+    auto transpose() const {
+        Mat tmp;
+        tmp.m[0] = Vec<Scalar, 4>(m[0]).shuffle<0, 2, 1, 3>().m;
+        return tmp;
+    }
+};
+
+#undef MAT_MUL_VEC_EXPRS
+#undef MAT_MUL_COL_EXPRS
+#undef MAT_MUL_MAT_EXPRS
 
 }
