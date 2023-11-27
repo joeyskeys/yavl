@@ -85,12 +85,61 @@ static inline Vec<float, 2> mat2_mul_vec_f32(const Mat<float, 2>& mat,
     return Vec<float, 2>(tmpv4a[0], tmpv4a[1]);
 }
 
+template <typename T>
+    requires yavl::is_int32_v<T>
+static inline Vec<T, 2> mat2_mul_vec_i32(const Mat<float, 2>& mat,
+    const Vec<T, 2>& vec)
+{
+    // TODO: Blabla
+    return Vec<T, 2>();
 }
 
+} // namespace detail
+
+template <>
+struct Col<float, 4> {
+    YAVL_TYPE_ALIAS(float, 4, 4)
+
+    Scalar* arr;
+    __m128 m;
+
+    Col(const Scalar* d)
+        : arr(const_cast<Scalar*>(d))
+    {
+        m = _mm_load_ps(arr);
+    }
+
+    // Miscs
+    YAVL_DEFINE_COL_MISC_FUNCS
+
+    // Operators
+    YAVL_DEFINE_COL_BASIC_FP_OP(, ps, ps)
+};
+
+template <>
+struct Col<float, 3> {
+    YAVL_TYPE_ALIAS(float, 3, 4)
+
+    Scalar* arr;
+    __m128 m;
+
+    Col(const Scalar* d)
+        : arr(const_cast<Scalar*>(d))
+    {
+        m = _mm_setr_ps(arr[0], arr[1], arr[2], 0);
+    }
+
+    // Miscs
+    YAVL_DEFINE_COL_MISC_FUNCS
+
+    // Operators
+    YAVL_DEFINE_COL_BASIC_FP_OP(, ps, ps)
+};
+
 // Cascaded including, using max bits intrinsic set available
-#if defined(YAVL_X86_AVX512ER)
+#if defined(YAVL_X86_AVX512ER) && !defined(YAVL_FORCE_SSE_MAT) && !defined(YAVL_FORCE_AVX_MAT)
     #include <yavl/mat/mat_avx512.h>
-#elif defined(YAVL_x86_AVX) && defined(YAVL_X86_AVX2)
+#elif defined(YAVL_X86_AVX) && defined(YAVL_X86_AVX2) && !defined(YAVL_FORCE_SSE_MAT)
     #include <yavl/mat/mat_avx.h>
     #include <yavl/mat/mat_avx2.h>
 #elif defined(YAVL_X86_SSE42)

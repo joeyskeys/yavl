@@ -166,6 +166,22 @@ inline void apply_by4(const uint32_t i, const F& f, T0&& t0, T1&& t1, T2&& t2,
     apply_by4(i + 1, f, args...);
 }
 
+template <typename F, typename... Ts>
+inline void apply_by8(const uint32_t i, const F& f, Ts&&... args) {
+    return;
+}
+
+template <typename F, typename T0, typename T1, typename T2, typename T3,
+    typename T4, typename T5, typename T6, typename T7, typename... Ts>
+inline void apply_by8(const uint32_t i, const F& f, T0&& t0, T1&& t1, T2&& t2,
+    T3&& t3, T4&& t4, T5&& t5, T6&& t6, T7&& t7, Ts&&... args)
+{
+    f(i, std::forward<T0>(t0), std::forward<T1>(t1), std::forward<T2>(t2),
+        std::forward<T3>(t3), std::forward<T4>(t4), std::forward<T5>(t5),
+        std::forward<T6>(t6), std::forward<T7>(t7));
+    apply_by8(i + 1, f, args...);
+}
+
 // Traits
 template <typename T>
 struct is_float {
