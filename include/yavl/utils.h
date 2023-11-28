@@ -14,7 +14,6 @@ namespace yavl
     using Scalar = std::decay_t<TYPE>;                                  \
     static constexpr uint32_t Size = N;                                 \
     static constexpr uint32_t IntrinSize = INTRIN_N;                    \
-    static constexpr uint32_t BitSize = sizeof(Scalar) * N * 8;
 
 #define YAVL_DEFINE_VEC_OP(BITS, OP, AT, NAME, IT)                      \
     auto operator OP(const AT<Scalar, Size>& v) const {                 \
