@@ -445,4 +445,5 @@ using Mat4i = Mat4<int>;
 
 template <typename T>
 using Mat4u = Mat4<uint32_t>;
-}
+
+} // namespace yavl

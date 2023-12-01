@@ -1,5 +1,8 @@
 #pragma once
 
+namespace yavl
+{
+
 // Common macros
 #define YAVL_MAT_ALIAS_VECTORIZED(TYPE, N, INTRIN_N, REGI_N)            \
     YAVL_MAT_ALIAS(TYPE, N, INTRIN_N)                                   \
@@ -21,55 +24,55 @@
     }
 
 #define MAT_MUL_SCALAR_EXPRS(BITS, IT)                                  \
-    {                                                                   \
-        Mat tmp;                                                        \
-        auto vs = _mm##BITS##_set1_##IT(s);                             \
-        static_for<MSize>([&](const auto i) {                           \
-            tmp.m[i] = _mm##BITS##_mul_##IT(m[i], vs);                  \
-        });                                                             \
-        return tmp;                                                     \
-    }
+{                                                                       \
+    Mat tmp;                                                            \
+    auto vs = _mm##BITS##_set1_##IT(s);                                 \
+    static_for<MSize>([&](const auto i) {                               \
+        tmp.m[i] = _mm##BITS##_mul_##IT(m[i], vs);                      \
+    });                                                                 \
+    return tmp;                                                         \
+}
 
 #define MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT)                           \
-    {                                                                   \
-        auto vs = _mm##BITS##_set1_##IT(s);                             \
-        static_for<MSize>([&](const auto i) {                           \
-            m[i] = _mm##BITS##_mul_##IT(m[i], vs);                      \
-        });                                                             \
-        return *this;                                                   \
-    }
+{                                                                       \
+    auto vs = _mm##BITS##_set1_##IT(s);                                 \
+    static_for<MSize>([&](const auto i) {                               \
+        m[i] = _mm##BITS##_mul_##IT(m[i], vs);                          \
+    });                                                                 \
+    return *this;                                                       \
+}
 
 #define OP_VEC_EXPRS(BITS, OP, AT, NAME, IT)                            \
-    {                                                                   \
-        return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(m, v.m));    \
-    }
+{                                                                       \
+    return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(m, v.m));        \
+}
 
 #define OP_VEC_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                     \
-    {                                                                   \
-        auto vv = _mm##BITS##_##NAME##_##IT(m, v.m);                    \
-        m = _mm##BITS##_##NAME##_##IT(m, vv);                           \
-        _mm##BITS##_store_##IT(arr, m);                                 \
-    }
+{                                                                       \
+    auto vv = _mm##BITS##_##NAME##_##IT(m, v.m);                        \
+    m = _mm##BITS##_##NAME##_##IT(m, vv);                               \
+    _mm##BITS##_store_##IT(arr, m);                                     \
+}
 
 #define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                             \
-    {                                                                   \
-        auto vv = _mm##BITS##_set1_##IT(v);                             \
-        return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(m, vv));     \
-    }
+{                                                                       \
+    auto vv = _mm##BITS##_set1_##IT(v);                                 \
+    return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(m, vv));         \
+}
 
 #define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                      \
-    {                                                                   \
-        auto vv = _mm##BITS##_set1_##IT(v);                             \
-        m = _mm##BITS##_##NAME##_##IT(m, vv);                           \
-        _mm##BITS##_store_##IT(arr, m);                                 \
-        return *this;                                                   \
-    }
+{                                                                       \
+    auto vv = _mm##BITS##_set1_##IT(v);                                 \
+    m = _mm##BITS##_##NAME##_##IT(m, vv);                               \
+    _mm##BITS##_store_##IT(arr, m);                                     \
+    return *this;                                                       \
+}
 
 #define OP_FRIEND_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                  \
-    {                                                                   \
-        auto vv = _mm##BITS##_set1_##IT(s);                             \
-        return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(vv, v.m));   \
-    }
+{                                                                       \
+    auto vv = _mm##BITS##_set1_##IT(s);                                 \
+    return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(vv, v.m));       \
+}
 
 // Common methods
 namespace detail
@@ -136,6 +139,15 @@ struct Col<float, 3> {
     YAVL_DEFINE_COL_BASIC_FP_OP(, ps, ps)
 };
 
+// Include possible common impl
+#if defined(YAVL_X86_SSE42)
+    #include <yavl/mat/mat2_sse42.h>
+#endif
+
+#if defined(YAVL_X86_AVX)
+    #include <yavl/mat/mat2_avx.h>
+#endif
+
 // Cascaded including, using max bits intrinsic set available
 #if defined(YAVL_X86_AVX512ER) && !defined(YAVL_FORCE_SSE_MAT) && !defined(YAVL_FORCE_AVX_MAT)
     #include <yavl/mat/mat_avx512.h>
@@ -153,3 +165,5 @@ struct Col<float, 3> {
 #undef OP_SCALAR_EXPRS
 #undef OP_SCALAR_ASSIGN_EXPRS
 #undef OP_FRIEND_SCALAR_EXPRS
+
+} // namespace yavl

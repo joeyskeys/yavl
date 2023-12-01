@@ -1,7 +1,5 @@
 #pragma once
 
-#include <yavl/mat/mat2_sse42.h>
-
 namespace yavl
 {
 
@@ -122,10 +120,10 @@ struct alignas(16) Mat<float, 3> {
     // Matrix manipulation methods
     auto transpose() const {
         Mat<Scalar, 4> tmp4;
-        tmp.m[0] = m[0];
-        tmp.m[1] = m[1];
-        tmp.m[2] = m[2];
-        _MM_TRANSPOSE4_PS(tmp.m[0], tmp.m[1], tmp.m[2], tmp.m[3]);
+        tmp4.m[0] = m[0];
+        tmp4.m[1] = m[1];
+        tmp4.m[2] = m[2];
+        _MM_TRANSPOSE4_PS(tmp4.m[0], tmp4.m[1], tmp4.m[2], tmp4.m[3]);
         Mat tmp;
         tmp.m[0] = tmp4.m[0];
         tmp.m[1] = tmp4.m[1];
@@ -138,4 +136,4 @@ struct alignas(16) Mat<float, 3> {
 #undef MAT_MUL_COL_EXPRS
 #undef MAT_MUL_MAT_EXPRS
 
-}
+} // namespace yavl

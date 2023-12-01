@@ -1,9 +1,20 @@
 #pragma once
 
-#include <yavl/mat/mat2_sse42.h>
-
 namespace yavl
 {
+
+#define _MM_TRANSPOSE4_PD(col0, col1, col2, col3)                       \
+do {                                                                    \
+    __m256d tmp3, tmp2, tmp1, tmp0;                                     \
+    tmp0 = _mm256_unpacklo_pd((col0), (col1));                          \
+    tmp2 = _mm256_unpacklo_pd((col2), (col3));                          \
+    tmp1 = _mm256_unpackhi_pd((col0), (col1));                          \
+    tmp3 = _mm256_unpackhi_pd((col2), (col3));                          \
+    (col0) = _mm256_permute2f128_pd(tmp0, tmp2, 0x20);                  \
+    (col1) = _mm256_permute2f128_pd(tmp0, tmp2, 0x31);                  \
+    (col2) = _mm256_permute2f128_pd(tmp1, tmp3, 0x20);                  \
+    (col3) = _mm256_permute2f128_pd(tmp1, tmp3, 0x31);                  \
+} while (0)
 
 template <typename T, uint32_t N>
 static inline Vec<T, N> avx_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
@@ -246,12 +257,12 @@ struct alignas(32) Mat<float, 3> {
 
 template <>
 struct alignas(32) Mat<double, 4> {
-    YAVL_MAT_ALIAS_VECTORIZED(float, 4, 8, 4)
+    YAVL_MAT_ALIAS_VECTORIZED(double, 4, 8, 4)
 
-    YAVL_DEFINE_MAT_UNION(__m256)
+    YAVL_DEFINE_MAT_UNION(__m256d)
 
     // Ctors
-    YAVL_MAT_VECTORIZED_CTOR(256, pd, __m128)
+    YAVL_MAT_VECTORIZED_CTOR(256, pd, __m256d)
 
     template <typename... Ts>
         requires (std::default_initializable<Ts> && ...)
@@ -273,18 +284,56 @@ struct alignas(32) Mat<double, 4> {
 
     // Matrix manipulation methods
     auto transpose() const {
-        // TODO
+        Mat tmp;
+        tmp.m[0] = m[0];
+        tmp.m[1] = m[1];
+        tmp.m[2] = m[2];
+        tmp.m[3] = m[3];
+        _MM_TRANSPOSE4_PD(tmp.m[0], tmp.m[1], tmp.m[2], tmp.m[3]);
+        return tmp;
     }
 };
 
 template <>
 struct alignas(32) Mat<double, 3> {
+    YAVL_MAT_ALIAS_VECTORIZED(double, 3, 8, 3);
 
+    YAVL_DEFINE_MAT_UNION(__m256d)
+
+    // Ctors
+    YAVL_MAT_VECTORIZED_CTOR(256, pd, __m256d)
+
+    template <typename... Ts>
+        requires (std::default_initializable<Ts> && ...)
+    constexpr Mat(Ts... args) {
+        static_assert(sizeof...(args) == Size2);
+        auto setf = [&](const uint32_t i, const auto t0, const auto t1,
+            const auto t2)
+        {
+            m[i] = _mm256_setr_pd(t0, t1, t2, 0);
+        };
+        apply_by3(0, setf, args...);
+    }
+
+    // Operators
+    YAVL_DEFINE_MAT_OP(256, pd)
+
+    // Misc funcs
+    YAVL_DEFINE_DATA_METHOD
+
+    // Matrix manipulation methods
+    auto transpose() const {
+        Mat<Scalar, 4> tmp4;
+        tmp4.m[0] = m[0];
+        tmp4.m[1] = m[1];
+        tmp4.m[2] = m[2];
+        tmp4 = tmp4.transpose();
+        Mat tmp;
+        tmp.m[0] = tmp4.m[0];
+        tmp.m[1] = tmp4.m[1];
+        tmp.m[2] = tmp4.m[2];
+        return tmp;
+    }
 };
 
-template <>
-struct alignas(32) Mat<double, 2> {
-
-};
-
-}
+} // namespace yavl
