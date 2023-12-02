@@ -44,14 +44,14 @@ do {                                                                    \
         m1 = _mm256_add_ps(m1, m1_flip);                                \
         __m256 m2 = _mm256_set1_ps(0);                                  \
         static_for<MSize>([&](const auto j) {                           \
-            auto v1 = mat.arr[((i << 1) + 1) * Size + (j << 1)];  \
-            auto v2 = mat.arr[((i << 1) + 1) * Size + (j << 1 + 1)]; \
+            auto v1 = mat.arr[((i << 1) + 1) * Size + (j << 1)];        \
+            auto v2 = mat.arr[((i << 1) + 1) * Size + (j << 1 + 1)];    \
             auto bij = _mm256_setr_ps(v1, v1, v1, v1, v2, v2, v2, v2);  \
             m2 = _mm256_fmadd_ps(m[j], bij, m2);                        \
         });                                                             \
         auto m2_flip = _mm256_permute2f128_ps(m2, m2, 1);               \
         m2 = _mm256_add_ps(m2, m2_flip);                                \
-        tmp.m[i] = _mm256_permute2f128(m1, m2, 0b00100000);             \
+        tmp.m[i] = _mm256_permute2f128_ps(m1, m2, 0b00100000);          \
     });                                                                 \
     return tmp;                                                         \
 }
@@ -92,8 +92,8 @@ struct alignas(32) Mat<float, 4> {
         auto tmp0 = _mm256_unpacklo_ps(m02, m13);
         auto tmp1 = _mm256_unpackhi_ps(m02, m13);
         constexpr auto mask = _mm256_setr_epi32(0, 1, 4, 5, 2, 3, 6, 7);
-        tmp.m[0] = _mm256_permutevar_ps(tmp0, mask);
-        tmp.m[1] = _mm256_permutevar_ps(tmp1, mask);
+        tmp.m[0] = _mm256_permute8x32_ps(tmp0, mask);
+        tmp.m[1] = _mm256_permute8x32_ps(tmp1, mask);
     }
 }
 
@@ -122,15 +122,15 @@ struct alignas(32) Mat<float, 3> {
     }
 
     template <typename V>
-        requires std::default_initializable<V> && std::convertible_to<V, Scalar> \
+        requires std::default_initializable<V> && std::convertible_to<V, Scalar>
     Mat(V v) {
         m1 = _mm256_set1_ps(static_cast<Scalar>(v));
         m2 = _mm_set1_ps(static_cast<Scalar>(v));
     }
 
-    constexpr Mat(const Scalar& t0, const Scalar& t1, const Scalar& t2,
-        const Scalar& t3, const Scalar& t4, const Scalar& t5, const Scalar& t6,
-        const Scalar& t7, const Scalar& t8)
+    constexpr Mat(const Scalar t0, const Scalar t1, const Scalar t2,
+        const Scalar t3, const Scalar t4, const Scalar t5, const Scalar t6,
+        const Scalar t7, const Scalar t8)
     {
         m1 = _mm256_setr_ps(t0, t1, t2, 0, t3, t4, t5, 0);
         m2 = _mm_setr_ps(t6, t7, t8, 0);
@@ -179,7 +179,7 @@ struct alignas(32) Mat<float, 3> {
         __m128 col[3];
         col[0] = _mm256_extractf128_ps(mat.m1, 0);
         col[1] = _mm256_extractf128_ps(mat.m1, 1);
-        col[3] = mat.m2;
+        col[2] = mat.m2;
         static_for<Size>([&](const auto i) {
             col[i] = operator *(Vec<Scalar, Size>{col[i]});
         });
@@ -213,9 +213,9 @@ struct alignas(32) Mat<float, 3> {
     // Matrix manipulation methods
     auto transpose() const {
         Mat<Scalar, 4> mat4;
-        memcpy(mat4.data(), data(), 12 * sizeof(float));
+        memcpy(mat4.data(), data(), 12 * sizeof(Scalar));
         mat4 = mat4.transpose();
-        memcpy(data(), mat4.data(), 12 * sizeof(float));
+        memcpy(data(), mat4.data(), 12 * sizeof(Scalar));
     }
 };
 
