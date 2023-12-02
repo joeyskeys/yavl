@@ -78,23 +78,135 @@ namespace yavl
 namespace detail
 {
 
+// TODO: find out whether a shuffle and a hadd is better than two adds
+#define MAT2_MUL_VEC_COMMON_EXPRS(TYPE, HADD)                           \
+    auto tmpv4a = Vec<TYPE, 4>(mat.m[0]);                               \
+    auto tmpv4b = Vec<TYPE, 4>(vec[0], vec[0], vec[1], vec[1]);         \
+    auto vm = (tmpv4a * tmpv4b).shuffle<0, 2, 1, 3>().m;                \
+    tmpv4a = Vec<TYPE, 4>(HADD(vm, vm));                                \
+    return Vec<TYPE, 2>(tmpv4a[0], tmpv4a[1]);
+
 static inline Vec<float, 2> mat2_mul_vec_f32(const Mat<float, 2>& mat,
     const Vec<float, 2>& vec)
 {
-    auto tmpv4a = Vec<float, 4>(mat.m[0]);
-    auto tmpv4b = Vec<float, 4>(vec[0], vec[0], vec[1], vec[1]);
-    auto vm = (tmpv4a * tmpv4b).shuffle<0, 2, 1, 3>().m;
-    tmpv4a = Vec<float, 4>(_mm_hadd_ps(vm, vm));
-    return Vec<float, 2>(tmpv4a[0], tmpv4a[1]);
+    MAT2_MUL_VEC_COMMON_EXPRS(float, _mm_hadd_ps)
 }
 
 template <typename T>
     requires yavl::is_int32_v<T>
-static inline Vec<T, 2> mat2_mul_vec_i32(const Mat<float, 2>& mat,
+static inline Vec<T, 2> mat2_mul_vec_i32(const Mat<T, 2>& mat,
     const Vec<T, 2>& vec)
 {
-    // TODO: Blabla
+    MAT2_MUL_VEC_COMMON_EXPRS(T, _mm_hadd_epi32)
+}
+
+static inline Vec<double, 2> mat2_mul_vec_f64(const Mat<double, 2>& mat,
+    const Vec<double, 2>& vec)
+{
+    MAT2_MUL_VEC_COMMON_EXPRS(double, _mm256_hadd_pd)
+}
+
+template <typename T>
+    requires yavl::is_int64_v<T>
+static inline Vec<T, 2> mat2_mul_vec_i64(const Mat<T, 2>& mat,
+    const Vec<T, 2>& vec)
+{
+    auto tmpv4a = Vec<T, 4>(mat.m[0]);
+    auto tmpv4b = Vec<T, 4>(vec[0], vec[0], vec[1], vec[1]);
+    auto vm = Vec<T, 4>((tmpv4a * tmpv4b).shuffle<0, 2, 1, 3>().m);
+    return Vec<T, 2>(vm[0] + vm[1], vm[2] + vm[3]);
+}
+
+template <typename T>
+    requires yavl::is_int64_v<T>
+static inline Vec<T, 2> mat2_mul_vec_i64(const Mat<T, 2>& mat,
+    const Vec<T, 2>& vec)
+{
     return Vec<T, 2>();
+}
+
+template <typename T, uint32_t N>
+static inline Vec<T, N> sse42_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
+    // Check comments in avx512 impl
+    Vec<T, N> tmp;
+    if constexpr (N == 2) {
+        if constexpr (std::is_floating_point_v<T>) {
+            tmp = mat2_mul_vec_f32(mat, vec);
+        }
+        else {
+            tmp = mat2_mul_vec_i32(mat, vec);
+        }
+    }
+    else {
+        static_for<Mat<T, N>::MSize>([&](const auto i) {
+            if constexpr (std::is_floating_point_v<T>) {
+                auto vm = _mm_set1_ps(vec[i]);
+                // If we're using this impl, it mean FMA not available
+                //tmp.m = _mm_fmadd_ps(mat.m[i], vm, tmp.m);
+                tmp.m = _mm_add_ps(_mm_mul_ps(mat.m[i], vm), tmp.m);
+            }
+            else {
+                auto vm = _mm_set1_ps(vec[i]);
+                tmp.m = _mm_add_epi32(tmp.m, _mm_mul_epi32(mat.m[i], vm));
+            }
+        });
+    }
+    return tmp;
+}
+
+template <typename T, uint32_t N>
+static inline Vec<T, N> avx_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
+    // Check comments in avx512 impl
+    Vec<T, N> tmp;
+    if constexpr (N == 2) {
+        if constexpr (std::is_floating_point_v<T>) {
+            if constexpr (sizeof(T) == 4)
+                tmp = mat2_mul_vec_f32(mat, vec);
+            else
+                tmp = mat2_mul_vec_f64(mat, vec);
+        }
+        else {
+            if constexpr (sizeof(T) == 4)
+                tmp = mat2_mul_vec_i32(mat, vec);
+            else
+                tmp = mat2_mul_vec_i64(mat, vec);
+        }
+    }
+    else {
+        if constexpr (sizoef(T) == 4) {
+            static_for<Mat<T, N>::MSize>([&](const auto i) {
+                auto v1 = vec[i << 1];
+                auto v2 = vec[i << 1 + 1];
+                if constexpr (std::is_floating_point_v<T>) {
+                    auto vm = _mm256_set1_ps(0);
+                    auto b = _mm256_setr_ps(v1, v1, v1, v1, v2, v2, v2, v2);
+                    vm = _mm256_fmadd_ps(mat.m[i], b, vm);
+                    auto vm_flip = _mm256_permute2f128_ps(vm, vm, 1);
+                    tmp.m = _mm256_extractf128_ps(_mm256_add_ps(vm, vm_flip), 0);
+                }
+                else {
+                    auto vm = _mm256_set1_epi32(0);
+                    auto b = _mm256_setr_epi32(v1, v1, v1, v1, v2, v2, v2, v2);
+                    vm = _mm256_add_epi32(vm256, _mm256_mullo_epi32(mat.m[i], vm));
+                    auto vm_flip = _mm256_permute2x128_si256(vm, vm, 1);
+                    tmp.m = _mm256_extracti128_si256(_mm256_add_epi32(vm, vm_flip), 0);
+                }
+            });
+        }
+        else {
+            static_for<Mat<T, N>::MSize>([&](const auto i) {
+                if constexpr (std::is_floating_point_v<T>) {
+                    auto vm = _mm256_set1_pd(vec[i]);
+                    tmp.m = _mm256_fmadd_pd(mat.m[i], vm, tmp.m);
+                }
+                else {
+                    auto vm = _mm256_set1_pd(vec[i]);
+                    tmp.m = _mm256_add_epi64(tmp.m, _mm256_mul_epi64(mat.m[i], vm));
+                }
+            });
+        }
+    }
+    return tmp;
 }
 
 } // namespace detail

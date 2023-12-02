@@ -16,49 +16,17 @@ do {                                                                    \
     (col3) = _mm256_permute2f128_pd(tmp1, tmp3, 0x31);                  \
 } while (0)
 
-template <typename T, uint32_t N>
-static inline Vec<T, N> avx_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
-    // Check comments in avx512 impl
-    Vec<T, N> tmp;
-    if constexpr (N == 2) {
-        tmp = mat2_mul_vec_f32(mat, vec);
-    }
-    else {
-        static_for<Mat<T, N>::MSize>([&](const auto i) {
-            auto v1 = vec[i << 1];
-            auto v2 = vec[i << 1 + 1];
-            if constexpr (std::is_floating_point_v<T>) {
-                auto vm = _mm256_set1_ps(0);
-                auto b = _mm256_setr_ps(v1, v1, v1, v1, v2, v2, v2, v2);
-                vm = _mm256_fmadd_ps(mat.m[i], b, vm);
-                auto vm_flip = _mm256_permute2f128_ps(vm, vm, 1);
-                tmp.m = _mm256_extractf128_ps(_mm256_add_ps(vm, vm_flip), 0);
-            }
-            /*
-            else {
-                auto vm256 = _mm256_set1_epi32(0);
-                auto vm = _mm256_setr_epi32(v1, v1, v1, v1, v2, v2, v2, v2);
-                vm256 = _mm256_add_epi32(vm256, _mm256_mullo_epi32(mat.m[i], vm));
-                vm256 = _mm256_permutevar_epi32(vm256, idx256);
-                tmp.m = _mm256_extract
-            }
-            */
-        });
-    }
-    return tmp;
-}
-
 #define MAT_MUL_VEC_EXPRS                                               \
-{
-    return avx_mat_mul_vec_32_impl(*this, v);
+{                                                                       \
+    return avx_mat_mul_vec_impl(*this, v);                              \
 }
 
 #define MAT_MUL_COL_EXPRS                                               \
 {                                                                       \
     if constexpr (Size == 2)                                            \
-        return avx_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>{v[0], v[1]}); \
+        return avx_mat_mul_vec_impl(*this, Vec<Scalar, Size>{v[0], v[1]}); \
     else                                                                \
-        return avx_mat_mul_vec_32_impl(*this, Vec<Scalar, Size>(v.m));  \
+        return avx_mat_mul_vec_impl(*this, Vec<Scalar, Size>(v.m));     \
 }
 
 #define MAT_MUL_MAT_EXPRS                                               \
@@ -67,8 +35,8 @@ static inline Vec<T, N> avx_mat_mul_vec_32_impl(const Mat<T, N>& mat, const Vec<
     static_for<MSize>([&](const auto i) {                               \
         __m256 m1 = _mm256_set1_ps(0);                                  \
         static_for<MSize>([&](const auto j) {                           \
-            auto v1 = mat.arr[(i << 1) * Size + (j << 1)];        \
-            auto v2 = mat.arr[(i << 1) * Size + (j << 1 + 1)];    \
+            auto v1 = mat.arr[(i << 1) * Size + (j << 1)];              \
+            auto v2 = mat.arr[(i << 1) * Size + (j << 1 + 1)];          \
             auto bij = _mm256_setr_ps(v1, v1, v1, v1, v2, v2, v2, v2);  \
             m1 = _mm256_fmadd_ps(m[j], bij, m1);                        \
         });                                                             \
@@ -128,10 +96,6 @@ struct alignas(32) Mat<float, 4> {
         tmp.m[1] = _mm256_permutevar_ps(tmp1, mask);
     }
 }
-
-#undef MAT_MUL_VEC_EXPRS
-#undef MAT_MUL_COL_EXPRS
-#undef MAT_MUL_MAT_EXPRS
 
 template <>
 struct alignas(32) Mat<float, 3> {
@@ -255,6 +219,20 @@ struct alignas(32) Mat<float, 3> {
     }
 };
 
+#undef MAT_MUL_MAT_EXPRS
+
+// Code here is just same as code for Mat<float, 4> sse impl
+#define MAT_MUL_MAT_EXPRS                                               \
+{                                                                       \
+    Mat tmp;                                                            \
+    static_for<Size>([&](const auto i) {                                \
+        static_for<Size>([&](const auto j) {                            \
+            auto bij = _mm256_set1_pd(mat[i][j]);                       \
+            tmp.m[i] = _mm256_fmadd_pd(m[j], bij, tmp.m[i]);            \
+        });                                                             \
+    });                                                                 \
+}
+
 template <>
 struct alignas(32) Mat<double, 4> {
     YAVL_MAT_ALIAS_VECTORIZED(double, 4, 8, 4)
@@ -335,5 +313,9 @@ struct alignas(32) Mat<double, 3> {
         return tmp;
     }
 };
+
+#undef MAT_MUL_VEC_EXPRS
+#undef MAT_MUL_COL_EXPRS
+#undef MAT_MUL_MAT_EXPRS
 
 } // namespace yavl
