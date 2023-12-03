@@ -317,5 +317,6 @@ struct alignas(32) Mat<double, 3> {
 #undef MAT_MUL_VEC_EXPRS
 #undef MAT_MUL_COL_EXPRS
 #undef MAT_MUL_MAT_EXPRS
+#undef _MM_TRANSPOSE4_PD
 
 } // namespace yavl

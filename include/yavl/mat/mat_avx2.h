@@ -85,7 +85,7 @@ struct alignas(32) Mat<I, 4, true, enable_if_int32_t<I>> {
 };
 
 template <typename I>
-struct alignas(32) Mat<I, 3, true, enable_if_int32_t<T>> {
+struct alignas(32) Mat<I, 3, true, enable_if_int32_t<I>> {
     // Same as impl in avx, write everything manually
     using Scalar = T;
     static constexpr uint32_t Size = 3;
