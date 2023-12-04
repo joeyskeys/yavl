@@ -169,12 +169,12 @@ struct Col {
         return Col<Scalar, Size>(&arr[idx * Size]);                     \
     }
 
-#define YAVL_DEFINE_MAT_MUL_OP(BITS, IT)                                \
+#define YAVL_DEFINE_MAT_MUL_OP(BITS, IT, MUL)                           \
     auto operator *(const Scalar s) const {                             \
-        MAT_MUL_SCALAR_EXPRS(BITS, IT)                                  \
+        MAT_MUL_SCALAR_EXPRS(BITS, IT, MUL)                             \
     }                                                                   \
     auto operator *=(const Scalar s) {                                  \
-        MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT)                           \
+        MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT, MUL)                      \
     }                                                                   \
     auto operator *(const Vec<Scalar, Size>& v) const {                 \
         MAT_MUL_VEC_EXPRS                                               \
@@ -191,9 +191,9 @@ struct Col {
         return *this;                                                   \
     }
 
-#define YAVL_DEFINE_MAT_OP(BITS, IT)                                    \
+#define YAVL_DEFINE_MAT_OP(BITS, IT, MUL)                               \
     YAVL_DEFINE_MAT_INDEX_OP                                            \
-    YAVL_DEFINE_MAT_MUL_OP(BITS, IT)
+    YAVL_DEFINE_MAT_MUL_OP(BITS, IT, MUL)
 
 #define YAVL_DEFINE_DATA_METHOD                                         \
     auto data() {                                                       \

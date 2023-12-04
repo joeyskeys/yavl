@@ -50,7 +50,7 @@ struct alignas(16) Mat<float, 4> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(, ps)
+    YAVL_DEFINE_MAT_OP(, ps, mul)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD
@@ -89,7 +89,7 @@ struct alignas(16) Mat<float, 3> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(, ps)
+    YAVL_DEFINE_MAT_OP(, ps, mul)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD
@@ -108,6 +108,20 @@ struct alignas(16) Mat<float, 3> {
         return tmp;
     }
 };
+
+#undef MAT_MUL_MAT_EXPRS
+
+#define MAT_MUL_MAT_EXPRS                                               \
+{                                                                       \
+    Mat tmp;                                                            \
+    static_for<Size>([&](const auto i) {                                \
+        static_for<Size>([&](const auto j) {                            \
+            auto bij = _mm_set1_epi32(mat[i][j]);                       \
+            tmp.m[i] = _mm_add_epi32(_mm_mullo_epi32(m[j], bij), tmp.m[i]); \
+        });                                                             \
+    });                                                                 \
+    return tmp;                                                         \
+}
 
 template <typename I>
 struct alignas(16) Mat<I, 4, true, enable_if_int32_t<I>> {
@@ -131,7 +145,7 @@ struct alignas(16) Mat<I, 4, true, enable_if_int32_t<I>> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(, epi32)
+    YAVL_DEFINE_MAT_OP(, epi32, mullo)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD
@@ -171,7 +185,7 @@ struct alignas(16) Mat<I, 3, true, enable_if_int32_t<I>> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(, epi32)
+    YAVL_DEFINE_MAT_OP(, epi32, mullo)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD

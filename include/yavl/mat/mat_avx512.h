@@ -156,7 +156,7 @@ struct alignas(64) Mat<float, 4> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(512, ps)
+    YAVL_DEFINE_MAT_OP(512, ps, mul)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD
@@ -194,7 +194,7 @@ strcut alignas(64) Mat<double, 4> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(512, pd)
+    YAVL_DEFINE_MAT_OP(512, pd, mul)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD
@@ -202,6 +202,12 @@ strcut alignas(64) Mat<double, 4> {
     // Matrix manipulation methods
     auto transpose() const {
         Mat tmp;
+        auto m02 = _mm512_shuffle_f64x2(m[0], m[1], 0b01000100);
+        auto m13 = _mm512_shuffle_f64x2(m[0], m[1], 0b11101110);
+        auto tmp0 = _mm512_unpacklo_pd(m02, m13);
+        auto tmp1 = _mm512_unpackhi_pd(m02, m13);
+        tmp.m[0] = _mm512_shuffle_f64x2(tmp0, tmp1, 0b10001000);
+        tmp.m[1] = _mm512_shuffle_f64x2(tmp0, tmp1, 0b11011101);
         return tmp;
     }
 };
@@ -219,15 +225,31 @@ struct alignas(64) Mat<double, 3> {
     YAVL_DEFINE_MAT3_COMMON_OP(512, , pd, mul)
 
     auto operator *(const Vec<Scalar, Size>& v) const {
+        auto vm1 = _mm512_setr_pd(v[0], v[0], v[0], v[0], v[1], v[1],
+            v[1], v[1]);
+        auto vm2 = _mm256_set1_pd(v[2]);
+        vm1 = _mm512_mul_pd(m1, vm1);
+        vm2 = _mm256_mul_pd(m2, vm2);
 
-    }
-
-    auto operator *(const Col<Scalar, Size>& v) const {
-
+        auto idx = _mm512_setr_epi64(4, 5, 6, 7, 0, 1, 2, 3);
+        auto vm1_flip = _mm512_permutexvar_pd(idx, vm1);
+        vm1 = _mm512_add_pd(vm1, vm1_flip);
+        tmp.m = _mm256_add_pd(vm2, _mm512_extractf64x4_pd(vm1, 0));
+        return tmp;
     }
 
     auto operator *(const Mat& mat) const {
-
+        Mat tmp;
+        __m256 col[3];
+        col[0] = _mm512_extractf64x4_pd(mat.m1, 0);
+        col[1] = _mm512_extractf64x4_pd(mat.m1, 1);
+        col[2] = mat.m2;
+        static_for<Size>([&](const auto i) {
+            auto tm = _mm512_broadcast_f64x4(col[i]);
+            tmp.m1 = _mm512_fmadd_pd(m1, tm, tmp.m1);
+            tmp.m2 = _mm256_fmadd_pd(m2, col[i], tmp.m2);
+        });
+        return tmp;
     }
 
     // Misc funcs
@@ -237,19 +259,160 @@ struct alignas(64) Mat<double, 3> {
     YAVL_DEFINE_MAT3_TRANSPOSE
 };
 
+#undef MAT_MUL_MAT_EXPRS
+
+#define MAT_MUL_MAT_EXPRS                                           \
+{                                                                   \
+    Mat tmp;                                                        \
+    __m512i vm[4];                                                  \
+    static_for<4>([&](const auto i) constexpr {                     \
+        vm[i] = _mm512_broadcast_i32x4(_mm512_extracti32x4_epi32(m[0], i)); \
+        tmp.m[0] = _mm512_add_epi32(_mm512_mullo_epi32(m[0], vm[i]), tmp.m[0]); \
+    });                                                             \
+    return tmp;                                                     \
+}
+
 template <typename I>
 struct alignas(64) Mat<I, 4, true, enable_if_int32_t<I>> {
-    
+    YAVL_MAT_ALIAS_VECTORIZED(I, 4, 16, 1)
+
+    YAVL_DEFINEMAT_UNION(__m512i)
+
+    // Ctors
+    YAVL_MAT_VECTORIZED_CTOR(512, epi32, __m512i)
+
+    tmplate <typename... Ts>
+        requires (std::default_initializable<Ts> && ...)
+    constexpr Mat(Ts... args) {
+        static_assert(sizeof...(args) == Size2);
+        m[0] = _mm512_setr_epi32(args...);
+    }
+
+    // Operators
+    YAVL_DEFINE_MAT_OP(512, epi32, mullo)
+
+    // Misc funcs
+    YAVL_DEFINE_DATA_METHOD
+
+    // Matrix manipulation methods
+    YAVL_DEFINE_MAT3_TRANSPOSE
 };
+
+#undef MAT_MUL_MAT_EXPRS
+
+#define MAT_MUL_MAT_EXPRS                                               \
+{                                                                       \
+    Mat tmp;                                                            \
+    auto idx = _mm512_setr_epi64(4, 5, 6, 7, 0, 1, 2, 3);               \
+    static_for<MSize>([&](const auto i) {                               \
+        auto m1 = _mm512_set1_epi64(0);                                 \
+        static_for<MSize>([&](const auto j) {                           \
+            auto v1 = mat.arr[(i << 1) * Size + (j << 1)];              \
+            auto v2 = mat.arr[(i << 1) * Size + (j << 1 + 1)];          \
+            auto bij = _mm512_setr_epi64(v1, v1, v1, v1, v2, v2, v2, v2); \
+            m1 = _mm512_add_epi64(_mm512_mullo_epi64(m[j], bij), m1);   \
+        });                                                             \
+        auto m1_flip = _mm512_permutexvar_epi64(idx, m1);               \
+        m1 = _mm512_add_epi64(m1, m1_flip);                             \
+        auto m2 = _mm512_set1_epi64(0);                                 \
+        static_for<MSize>([&](const auto j) {                           \
+            auto v1 = mat.arr[(i << 1) * Size + (j << 1)];              \
+            auto v2 = mat.arr[(i << 1) * Size + (j << 1 + 1)];          \
+            auto bij = _mm512_setr_epi64(v1, v1, v1, v1, v2, v2, v2, v2); \
+            m2 = _mm512_add_epi64(_mm512_mullo_epi64(m[j], bij), m2);   \
+        });                                                             \
+        auto m2_flip = _mm512_permutexvar_epi64(idx, m2);               \
+        m2 = _mm512_add_epi64(m1, m2_flip);                             \
+    });                                                                 \
+    return tmp;                                                         \
+}
 
 template <typename I>
 struct alignas(64) Mat<I, 4, true, enable_if_int64_t<I>> {
+    YAVL_MAT_ALIAS_VECTORIZED(I, 4, 8, 2)
 
+    YAVL_DEFINE_MAT_UNION(__m512i)
+
+    // Ctors
+    YAVL_MAT_VECTORIZED_CTOR(512, epi64, __m512i)
+
+    template <typename... Ts>
+        requires (std::default_initalizable<Ts> && ...)
+    constexpr Mat(Ts... args) {
+        static_assert(sizeof...(args) == Size2);
+        auto seti = [&](const uint32_t i, const auto t0, const auto t1,
+            const auto t2, const auto t3, const auto t4, const auto t5,
+            const auto t6, const auto t7)
+        {
+            m[i] = _mm512_setr_epi64(t0, t1, t2, t3, t4, t5, t6, t7);
+        };
+        apply_by8(0, seti, args...);
+    }
+
+    // Operators
+    YAVL_DEFINE_MAT_OP(256, epi64, mullo)
+
+    // Misc funcs
+    YAVL_DEFINE_DATA_METHOD
+
+    // Matrix manipulation methods
+    auto transpose() const {
+        Mat tmp;
+        auto m02 = _mm512_shuffle_i64x2(m[0], m[1], 0b01000100);
+        auto m13 = _mm512_shuffle_i64x2(m[0], m[1], 0b11101110);
+        auto tmp0 = _mm512_unpacklo_epi64(m02, m13);
+        auto tmp1 = _mm512_unpackhi_epi64(m02, m13);
+        tmp.m[0] = _mm512_shuffle_i64x2(tmp0, tmp1, 0b10001000);
+        tmp.m[1] = _mm512_shuffle_i64x2(tmp0, tmp1, 0b11011101);
+        return tmp;
+    }
 };
 
 template <typename I>
 struct alignas(64) Mat<I, 3, true, enable_if_int64_t<I>> {
-    // Special one
+    YAVL_MAT3_ALIAS_VECTORIZED(I, 3)
+
+    YAVL_DEFINE_MAT3_UNION(__m512i, __m256i)
+
+    // Ctors
+    YAVL_MAT3_VECTORIZED_CTOR(512, 256, epi64)
+
+    // Operators
+    YAVL_DEFINE_MAT3_COMMON_OP(512, 256, epi64, mullo)
+
+    auto operator *(const Vec<Scalar, Size>& v) const {
+        auto vm1 = _mm512_setr_epi64(v[0], v[0], v[0], v[0], v[1], v[1],
+            v[1], v[1]);
+        auto vm2 = _mm512_set1_epi64(v[2]);
+        vm1 = _mm512_mullo_epi64(m1, vm1);
+        vm2 = _mm256_mullo_epi64(m2, vm2);
+
+        Vec<Scalar, Size> tmp;
+        static_for<2>([&](const auto i) constexpr {
+            auto col = _mm512_extracti64x4_epi64(vm1, i);
+            tmp.m = _mm256_add_epi64(col, tmp.m);
+        });
+        tmp.m = _mm256_add_epi64(vm2, tmp.m);
+        return tmp;
+    }
+
+    auto operator *(const Mat& mat) const {
+        Mat tmp;
+        __m256i col[3];
+        col[0] = _mm512_extracti64x4_epi64(mat.m1, 0);
+        col[1] = _mm512_extracti64x4_epi64(mat.m1, 1);
+        col[2] = mat.m2;
+        static_for<Size>([&](const auto i) {
+            auto tm = _mm512_broadcast_i64x4(col[i]);
+            tmp.m1 = _mm512_add_epi64(_mm512_mullo_epi64(m1, tm, tmp.m1));
+            tmp.m2 = _mm256_add_epi64(_mm256_mullo_epi64(m2, col[i], tmp.m2));
+        });
+        return tmp;
+    }
 };
+
+#undef MAT_MUL_VEC_EXPRS
+#undef MAT_MUL_COL_EXPRS
+#undef MAT_MUL_MAT_EXPRS
 
 }

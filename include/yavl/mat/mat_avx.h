@@ -79,7 +79,7 @@ struct alignas(32) Mat<float, 4> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(256, ps)
+    YAVL_DEFINE_MAT_OP(256, ps, mul)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD
@@ -134,7 +134,7 @@ struct alignas(32) Mat<double, 4> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(256, pd);
+    YAVL_DEFINE_MAT_OP(256, pd, mul);
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD
@@ -173,7 +173,7 @@ struct alignas(32) Mat<double, 3> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(256, pd)
+    YAVL_DEFINE_MAT_OP(256, pd, mul)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD

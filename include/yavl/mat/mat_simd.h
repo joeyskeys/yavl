@@ -141,6 +141,10 @@ namespace yavl
     auto operator *=(const Scalar s) const {                            \
         MAT3_MUL_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)                    \
     }                                                                   \
+    auto operator *(const Col<Scalar, Size>& v) const {                 \
+        auto vec = Vec<Scalar, Size>{v.m};                              \
+        return operator *(vec);                                         \
+    }                                                                   \
     auto operator *=(const Mat& mat) const {                            \
         Mat tmp = *this * mat;                                          \
         *this = tmp;                                                    \

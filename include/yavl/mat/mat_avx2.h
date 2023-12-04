@@ -20,16 +20,16 @@ namespace yavl
 {                                                                       \
     Mat tmp;                                                            \
     static_for<MSize>([&](const auto i) {                               \
-        __m256 m1 = _mm256_set1_epi32(0);                               \
+        __m256i m1 = _mm256_set1_epi32(0);                              \
         static_for<MSize>([&](const auto j) {                           \
             auto v1 = mat.arr[(i << 1) * Size + (j << 1)];              \
             auto v2 = mat.arr[(i << 1) * Size + (j << 1 + 1)];          \
-            auto bij = _mm256_setr_ps(v1, v1, v1, v1, v2, v2, v2, v2);  \
+            auto bij = _mm256_setr_epi32(v1, v1, v1, v1, v2, v2, v2, v2); \
             m1 = _mm256_add_epi32(_mm256_mullo_epi32(m[j], bij), m1);   \
         });                                                             \
         auto m1_flip = _mm256_permute2x128_si256(m1, m1, 1);            \
-        m1 = _mm256_add_ps(m1, m1_flip);                                \
-        __m256 m2 = _mm256_set1_ps(0);                                  \
+        m1 = _mm256_add_epi32(m1, m1_flip);                             \
+        __m256i m2 = _mm256_set1_ps(0);                                 \
         static_for<MSize>([&](const auto j) {                           \
             auto v1 = mat.arr[((i << 1) + 1) * Size + (j << 1)];        \
             auto v2 = mat.arr[((i << 1) + 1) * Size + (j << 1 + 1)];    \
@@ -53,7 +53,7 @@ struct alignas(32) Mat<I, 4, true, enable_if_int32_t<I>> {
     YAVL_MAT_VECTORIZED_CTOR(256, epi32, __m256)
 
     template <typename... Ts>
-        requires(std::default_initializable<Ts> && ...)
+        requires (std::default_initializable<Ts> && ...)
     constexpr Mat(Ts... args) {
         static_assert(sizeof...(args) == Size2);
         auto seti = [&](const uint32_t i, const auto t0, const auto t1,
@@ -66,7 +66,7 @@ struct alignas(32) Mat<I, 4, true, enable_if_int32_t<I>> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(256, epi32)
+    YAVL_DEFINE_MAT_OP(256, epi32, mullo)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD
