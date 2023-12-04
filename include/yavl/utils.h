@@ -93,12 +93,6 @@ namespace yavl
     YAVL_DEFINE_VEC_MISC_OP(BITS, CMD_SUFFIX)                           \
     YAVL_DEFINE_INT_ARITHMIC_OP_WITH_FRIEND(BITS, Vec, IT)
 
-#define YAVL_DEFINE_MAT_UNION(IT)                                       \
-    union {                                                             \
-        std::array<Scalar, IntrinSize * MSize> arr;                     \
-        IT m[MSize];                                                    \
-    };
-
 // Templates
 template <int... indices, typename Func>
 inline void static_for(const Func& func, std::integer_sequence<int, indices...> sequence) {

@@ -9,6 +9,12 @@ namespace yavl
     static constexpr uint32_t MSize = REGI_N;                           \
     static constexpr bool vectorized = true;
 
+#define YAVL_DEFINE_MAT_UNION(IT)                                       \
+    union {                                                             \
+        std::array<Scalar, IntrinSize * MSize> arr;                     \
+        IT m[MSize];                                                    \
+    };
+
 #define YAVL_MAT_VECTORIZED_CTOR(BITS, IT, REGI_TYPE)                   \
     Mat() {                                                             \
         static_for<MSize>([&](const auto i) {                           \
@@ -73,6 +79,81 @@ namespace yavl
     auto vv = _mm##BITS##_set1_##IT(s);                                 \
     return Vec<Scalar, Size>(_mm##BITS##_##NAME##_##IT(vv, v.m));       \
 }
+
+#define YAVL_MAT3_ALIAS_VECTORIZED(TYPE, N)                             \
+    using Scalar = TYPE;                                                \
+    static constexpr uint32_t Size = 3;                                 \
+    static constexpr uint32_t Size2 = 9;                                \
+    static constexpr bool vectorized = true;
+
+
+#define YAVL_DEFINE_MAT3_UNION(IT1, IT2)                                \
+    union {                                                             \
+        std::array<Scalar, 12> arr;                                     \
+        struct {                                                        \
+            IT1 m1;                                                     \
+            IT2 m2;                                                     \
+        };                                                              \
+    };
+
+#define YAVL_MAT3_VECTORIZED_CTOR(BITS1, BITS2, IT)                     \
+    Mat() {                                                             \
+        m1 = _mm##BITS1##_set1_##IT(static_cast<Scalar>(0));            \
+        m2 = _mm##BITS2##_set1_##IT(static_cast<Scalar>(0));            \
+    }                                                                   \
+    template <typename V>                                               \
+        requires std::default_initializable<V> && std::convertible_to<V, Scalar> \    Mat(V v) {
+        m1 = _mm##BITS1##_set1_##IT(static_cast<Scalar>(v));            \
+        m2 = _mm##BITS2##_set1_##IT(static_cast<Scalar>(v));            \
+    }                                                                   \
+    constexpr Mat(const Scalar t0, const Scalar t1, const Scalar t2,    \
+        const Scalar t3, const Scalar t4, const Scalar t5,              \
+        const Scalar t6, const Scalar t7, const Scalar t8)              \
+    {                                                                   \
+        m1 = _mm##BITS1##_setr_##IT(t0, t1, t2, 0, t3, t4, t5, 0);      \
+        m2 = _mm##BITS2##_setr_##IT(t6, t7, t8, 0);                     \
+    }
+
+#define MAT3_MUL_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)                    \
+{                                                                       \
+    Mat tmp;                                                            \
+    auto vm1 = _mm##BITS1##_set1_##IT(s);                               \
+    auto vm2 = _mm##BITS2##_set1_##IT(s);                               \
+    tmp.m1 = _mm##BITS1##_##MUL##_##IT(m1, vm1);                        \
+    tmp.m2 = _mm##BITS2##_##MUL##_##IT(m2, vm2);                        \
+    return tmp;                                                         \
+}
+
+#define MAT3_MUL_ASSIGN_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)             \
+{                                                                       \
+    auto vm1 = _mm##BITS1##_set1_##IT(s);                               \
+    auto vm2 = _mm##BITS2##_set1_##IT(s);                               \
+    m1 = _mm##BITS1##_##MUL##_##IT(m1, vm1);                            \
+    m2 = _mm##BITS2##_##MUL##_##IT(m2, vm2);                            \
+    return *this;                                                       \
+}
+
+#define YAVL_DEFINE_MAT3_COMMON_OP(BITS1, BITS2, IT, MUL)               \
+    YAVL_DEFINE_MAT_INDEX_OP                                            \
+    auto operator *(const Scalar s) const {                             \
+        MAT3_MUL_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)                    \
+    }                                                                   \
+    auto operator *=(const Scalar s) const {                            \
+        MAT3_MUL_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)                    \
+    }                                                                   \
+    auto operator *=(const Mat& mat) const {                            \
+        Mat tmp = *this * mat;                                          \
+        *this = tmp;                                                    \
+        return *this;                                                   \
+    }
+
+#define YAVL_DEFINE_MAT3_TRANSPOSE                                      \
+    auto transpose() const {                                            \
+        Mat<Scalar, 4> mat4;                                            \
+        memcpy(mat4.data(), data(), 12 * sizeof(Scalar));               \
+        mat4 = mat4.transpose();                                        \
+        memcpy(data(), mat4.data(), 12 * sizeof(Scalar));               \
+    }
 
 // Common methods
 namespace detail
@@ -263,9 +344,13 @@ struct Col<float, 3> {
 // Cascaded including, using max bits intrinsic set available
 #if defined(YAVL_X86_AVX512ER) && !defined(YAVL_FORCE_SSE_MAT) && !defined(YAVL_FORCE_AVX_MAT)
     #include <yavl/mat/mat_avx512.h>
+    #include <yavl/mat/mat3_avx.h>
+    #include <yavl/mat/mat3_avx2.h>
 #elif defined(YAVL_X86_AVX) && defined(YAVL_X86_AVX2) && !defined(YAVL_FORCE_SSE_MAT)
     #include <yavl/mat/mat_avx.h>
     #include <yavl/mat/mat_avx2.h>
+    #include <yavl/mat/mat3_avx.h>
+    #include <yavl/mat/mat3_avx2.h>
 #elif defined(YAVL_X86_SSE42)
     #include <yavl/mat/mat_sse42.h>
 #endif

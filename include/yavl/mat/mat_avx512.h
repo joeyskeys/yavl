@@ -130,7 +130,7 @@ static inline Vec<T, N> avx512_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<
 {                                                                   \
     Mat tmp;                                                        \
     __m512 vm[4];                                                   \
-    static_for<4>([&](const auto i) {                               \
+    static_for<4>([&](const auto i) constexpr {                     \
         vm[i] = _mm512_broadcast_f32x4(_mm512_extractf32x4_ps(m[0], i)); \
         tmp.m[0] = _mm512_fmadd_ps(m[0], vm[i], tmp.m[0]);          \
     });                                                             \
@@ -173,17 +173,73 @@ struct alignas(64) Mat<float, 4> {
 
 template <>
 strcut alignas(64) Mat<double, 4> {
-    YAVL_MAT_ALIAS_VECTORIZED(double, 4, 16, 2)
+    YAVL_MAT_ALIAS_VECTORIZED(double, 4, 8, 2)
+
+    YAVL_DEFINE_MAT_UNION(__m512)
+
+    // Ctors
+    YAVL_MAT_VECTORIZED_CTOR(512, pd, __m512)
+
+    template <typename... Ts>
+        requires (std::default_initializable<Ts> && ...)
+    constexpr Mat(Ts... args) {
+        static_assert(sizeof...(args) == Size2);
+        auto setf = [&](const uint32_t i, const auto t0, const auto t1,
+            const auto t2, const auto t3, const auto t4, const auto t5,
+            const auto t6, const auto t7)
+        {
+            m[i] = _mm512_setr_pd(t0, t1, t2, t3, t4, t5, t6, t7);
+        };
+        apply_by8(0, setf, args...);
+    }
+
+    // Operators
+    YAVL_DEFINE_MAT_OP(512, pd)
+
+    // Misc funcs
+    YAVL_DEFINE_DATA_METHOD
+
+    // Matrix manipulation methods
+    auto transpose() const {
+        Mat tmp;
+        return tmp;
+    }
 };
 
 template <>
 struct alignas(64) Mat<double, 3> {
-    // Special one
+    YAVL_MAT3_ALIAS_VECTORIZED(double, 3)
+
+    YAVL_DEFINE_MAT3_UNION(__m512d, __m256d)
+
+    // Ctors
+    YAVL_MAT3_VECTORIZED_CTOR(512, 256, pd)
+
+    // Operators
+    YAVL_DEFINE_MAT3_COMMON_OP(512, , pd, mul)
+
+    auto operator *(const Vec<Scalar, Size>& v) const {
+
+    }
+
+    auto operator *(const Col<Scalar, Size>& v) const {
+
+    }
+
+    auto operator *(const Mat& mat) const {
+
+    }
+
+    // Misc funcs
+    YAVL_DEFINE_DATA_METHOD
+
+    // Matrix manipulation methods
+    YAVL_DEFINE_MAT3_TRANSPOSE
 };
 
 template <typename I>
 struct alignas(64) Mat<I, 4, true, enable_if_int32_t<I>> {
-
+    
 };
 
 template <typename I>
