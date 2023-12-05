@@ -78,9 +78,10 @@ struct alignas(32) Mat<I, 4, true, enable_if_int32_t<I>> {
         auto m13 = _mm256_permute2f128_si256(m[0], m[1], 0b00110001);
         auto tmp0 = _mm256_unpacklo_epi32(m02, m13);
         auto tmp1 = _mm256_unpackhi_epi32(m02, m13);
-        constexpr auto mask = _mm256_setr_epi32(0, 1, 4, 5, 2, 3, 6, 7);
-        tmp.m[0] = _mm256_permute8x32_epi32(tmp0, mask);
-        tmp.m[1] = _mm256_permute8x32_epi32(tmp1, mask);
+        auto mask = _mm256_setr_epi32(0, 1, 4, 5, 2, 3, 6, 7);
+        tmp.m[0] = _mm256_permutevar8x32_epi32(tmp0, mask);
+        tmp.m[1] = _mm256_permutevar8x32_epi32(tmp1, mask);
+        return tmp;
     }
 };
 

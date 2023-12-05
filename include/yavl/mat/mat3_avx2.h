@@ -40,7 +40,11 @@ struct alignas(32) Mat<I, 3, true, enable_if_int32_t<I>> {
         col[1] = _mm256_extracti128_si256(mat.m1, 1);
         col[2] = mat.m2;
         static_for<Size>([&](const auto i) {
-            auto tm = _mm256_broadcast_i32x4(col[i]);
+            #if defined(YAVL_X86_AVX512VL)
+                auto tm = _mm256_broadcast_i32x4(col[i]);
+            #else
+                auto tm = _mm256_broadcast_ps(&col[i]);
+            #endif
             tmp.m1 = _mm256_add_epi32(_mm256_mullo_epi32(m1, tm, tmp.m1));
             tmp.m2 = _mm_add_epi32(_mm256_mullo_epi32(m2, col[i], tmp.m2));
         });

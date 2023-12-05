@@ -198,6 +198,9 @@ struct Col {
 #define YAVL_DEFINE_DATA_METHOD                                         \
     auto data() {                                                       \
         return arr.data();                                              \
+    }                                                                   \
+    auto data() const {                                                 \
+        return arr.data();                                              \
     }
 
 template <typename T, uint32_t N, bool enable_vec=true, typename = int>
@@ -237,7 +240,7 @@ struct Mat {
     }
 
     // Operators
-    #define MAT_MUL_SCALAR_EXPRS(BITS, IT)                              \
+    #define MAT_MUL_SCALAR_EXPRS(BITS, IT, MUL)                         \
     {                                                                   \
         Mat tmp;                                                        \
         static_for<Size2>([&](const auto i) {                           \
@@ -246,7 +249,7 @@ struct Mat {
         return tmp;                                                     \
     }
 
-    #define MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT)                       \
+    #define MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT, MUL)                  \
     {                                                                   \
         static_for<Size2>([&](const auto i) {                           \
             arr[i] *= s;                                                \
@@ -280,7 +283,7 @@ struct Mat {
         return tmp;                                                     \
     }
 
-    YAVL_DEFINE_MAT_OP(, )
+    YAVL_DEFINE_MAT_OP(, ,)
 
     #undef MAT_MUL_SCALAR_EXPRS
     #undef MAT_MUL_ASSIGN_SCALAR_EXPRS

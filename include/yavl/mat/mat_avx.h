@@ -18,15 +18,15 @@ do {                                                                    \
 
 #define MAT_MUL_VEC_EXPRS                                               \
 {                                                                       \
-    return avx_mat_mul_vec_impl(*this, v);                              \
+    return detail::avx_mat_mul_vec_impl(*this, v);                      \
 }
 
 #define MAT_MUL_COL_EXPRS                                               \
 {                                                                       \
     if constexpr (Size == 2)                                            \
-        return avx_mat_mul_vec_impl(*this, Vec<Scalar, Size>{v[0], v[1]}); \
+        return detail::avx_mat_mul_vec_impl(*this, Vec<Scalar, Size>{v[0], v[1]}); \
     else                                                                \
-        return avx_mat_mul_vec_impl(*this, Vec<Scalar, Size>(v.m));     \
+        return detail::avx_mat_mul_vec_impl(*this, Vec<Scalar, Size>(v.m)); \
 }
 
 #define MAT_MUL_MAT_EXPRS                                               \
@@ -91,12 +91,12 @@ struct alignas(32) Mat<float, 4> {
         auto m13 = _mm256_permute2f128_ps(m[0], m[1], 0b00110001);
         auto tmp0 = _mm256_unpacklo_ps(m02, m13);
         auto tmp1 = _mm256_unpackhi_ps(m02, m13);
-        constexpr auto mask = _mm256_setr_epi32(0, 1, 4, 5, 2, 3, 6, 7);
-        tmp.m[0] = _mm256_permute8x32_ps(tmp0, mask);
-        tmp.m[1] = _mm256_permute8x32_ps(tmp1, mask);
+        auto mask = _mm256_setr_epi32(0, 1, 4, 5, 2, 3, 6, 7);
+        tmp.m[0] = _mm256_permutevar8x32_ps(tmp0, mask);
+        tmp.m[1] = _mm256_permutevar8x32_ps(tmp1, mask);
         return tmp;
     }
-}
+};
 
 #undef MAT_MUL_MAT_EXPRS
 
@@ -110,6 +110,7 @@ struct alignas(32) Mat<float, 4> {
             tmp.m[i] = _mm256_fmadd_pd(m[j], bij, tmp.m[i]);            \
         });                                                             \
     });                                                                 \
+    return tmp;                                                         \
 }
 
 template <>

@@ -18,9 +18,10 @@ namespace yavl
     Mat tmp;                                                            \
     auto tmpv4a = Vec<Scalar, 4>(m[0]);                                 \
     auto tmpv4b = Vec<Scalar, 4>(mat.m[0]);                             \
-    auto v1 = tmpv4a * tmpv4b.shuffle<0, 0, 1, 1>();                    \
-    auto v2 = tmpv4a * tmpv4b.shuffle<2, 2, 3, 3>();                    \
-    tmp.m[0] = _mm256_hadd_pd(v1.shuffle<0, 2, 1, 3>(), v2.shuffle<0, 2, 1, 3>()); \
+    auto v1 = tmpv4a * tmpv4b.template shuffle<0, 0, 1, 1>();           \
+    auto v2 = tmpv4a * tmpv4b.template shuffle<2, 2, 3, 3>();           \
+    tmp.m[0] = _mm256_hadd_pd(v1.template shuffle<0, 2, 1, 3>().m,      \
+        v2.template shuffle<0, 2, 1, 3>().m);                           \
     tmp.m[0] = _mm256_permute4x64_pd(tmp.m[0], 0b11011000);             \
     return tmp;                                                         \
 }

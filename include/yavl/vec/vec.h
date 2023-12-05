@@ -4,8 +4,6 @@
 #include <cmath>
 #include <cstring>
 
-#include <yavl/utils.h>
-
 namespace yavl
 {
 

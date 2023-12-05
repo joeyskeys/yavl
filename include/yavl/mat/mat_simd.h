@@ -1,8 +1,5 @@
 #pragma once
 
-namespace yavl
-{
-
 // Common macros
 #define YAVL_MAT_ALIAS_VECTORIZED(TYPE, N, INTRIN_N, REGI_N)            \
     YAVL_MAT_ALIAS(TYPE, N, INTRIN_N)                                   \
@@ -29,21 +26,21 @@ namespace yavl
         });                                                             \
     }
 
-#define MAT_MUL_SCALAR_EXPRS(BITS, IT)                                  \
+#define MAT_MUL_SCALAR_EXPRS(BITS, IT, MUL)                             \
 {                                                                       \
     Mat tmp;                                                            \
     auto vs = _mm##BITS##_set1_##IT(s);                                 \
     static_for<MSize>([&](const auto i) {                               \
-        tmp.m[i] = _mm##BITS##_mul_##IT(m[i], vs);                      \
+        tmp.m[i] = _mm##BITS##_##MUL##_##IT(m[i], vs);                  \
     });                                                                 \
     return tmp;                                                         \
 }
 
-#define MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT)                           \
+#define MAT_MUL_ASSIGN_SCALAR_EXPRS(BITS, IT, MUL)                      \
 {                                                                       \
     auto vs = _mm##BITS##_set1_##IT(s);                                 \
     static_for<MSize>([&](const auto i) {                               \
-        m[i] = _mm##BITS##_mul_##IT(m[i], vs);                          \
+        m[i] = _mm##BITS##_##MUL##_##IT(m[i], vs);                      \
     });                                                                 \
     return *this;                                                       \
 }
@@ -102,11 +99,12 @@ namespace yavl
         m2 = _mm##BITS2##_set1_##IT(static_cast<Scalar>(0));            \
     }                                                                   \
     template <typename V>                                               \
-        requires std::default_initializable<V> && std::convertible_to<V, Scalar> \    Mat(V v) {
+        requires std::default_initializable<V> && std::convertible_to<V, Scalar> \
+    Mat(V v) {                                                          \
         m1 = _mm##BITS1##_set1_##IT(static_cast<Scalar>(v));            \
         m2 = _mm##BITS2##_set1_##IT(static_cast<Scalar>(v));            \
     }                                                                   \
-    constexpr Mat(const Scalar t0, const Scalar t1, const Scalar t2,    \
+    Mat(const Scalar t0, const Scalar t1, const Scalar t2,              \
         const Scalar t3, const Scalar t4, const Scalar t5,              \
         const Scalar t6, const Scalar t7, const Scalar t8)              \
     {                                                                   \
@@ -135,17 +133,18 @@ namespace yavl
 
 #define YAVL_DEFINE_MAT3_COMMON_OP(BITS1, BITS2, IT, MUL)               \
     YAVL_DEFINE_MAT_INDEX_OP                                            \
-    auto operator *(const Scalar s) const {                             \
+    auto operator *(const Scalar s) const                               \
+    {                                                                   \
         MAT3_MUL_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)                    \
     }                                                                   \
-    auto operator *=(const Scalar s) const {                            \
+    auto operator *=(const Scalar s) {                                  \
         MAT3_MUL_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)                    \
     }                                                                   \
     auto operator *(const Col<Scalar, Size>& v) const {                 \
         auto vec = Vec<Scalar, Size>{v.m};                              \
         return operator *(vec);                                         \
     }                                                                   \
-    auto operator *=(const Mat& mat) const {                            \
+    auto operator *=(const Mat& mat) {                                  \
         Mat tmp = *this * mat;                                          \
         *this = tmp;                                                    \
         return *this;                                                   \
@@ -153,10 +152,12 @@ namespace yavl
 
 #define YAVL_DEFINE_MAT3_TRANSPOSE                                      \
     auto transpose() const {                                            \
+        Mat tmp;                                                        \
         Mat<Scalar, 4> mat4;                                            \
         memcpy(mat4.data(), data(), 12 * sizeof(Scalar));               \
         mat4 = mat4.transpose();                                        \
-        memcpy(data(), mat4.data(), 12 * sizeof(Scalar));               \
+        memcpy(tmp.data(), mat4.data(), 12 * sizeof(Scalar));           \
+        return tmp;                                                     \
     }
 
 // Common methods
@@ -165,55 +166,53 @@ namespace detail
 
 // TODO: find out whether a shuffle and a hadd is better than two adds
 #define MAT2_MUL_VEC_COMMON_EXPRS(TYPE, HADD)                           \
-    auto tmpv4a = Vec<TYPE, 4>(mat.m[0]);                               \
-    auto tmpv4b = Vec<TYPE, 4>(vec[0], vec[0], vec[1], vec[1]);         \
-    auto vm = (tmpv4a * tmpv4b).shuffle<0, 2, 1, 3>().m;                \
-    tmpv4a = Vec<TYPE, 4>(HADD(vm, vm));                                \
-    return Vec<TYPE, 2>(tmpv4a[0], tmpv4a[1]);
+    auto tmpv4a = yavl::Vec<TYPE, 4>(mat.m[0]);                         \
+    auto tmpv4b = yavl::Vec<TYPE, 4>(vec[0], vec[0], vec[1], vec[1]);   \
+    auto vm = (tmpv4a * tmpv4b).template shuffle<0, 2, 1, 3>().m;       \
+    tmpv4a = yavl::Vec<TYPE, 4>(HADD(vm, vm));                          \
+    return yavl::Vec<TYPE, 2>(tmpv4a[0], tmpv4a[1]);
 
-static inline Vec<float, 2> mat2_mul_vec_f32(const Mat<float, 2>& mat,
-    const Vec<float, 2>& vec)
+template <typename T>
+    requires yavl::is_float_v<T>
+static inline yavl::Vec<T, 2> mat2_mul_vec_f32(const yavl::Mat<T, 2>& mat,
+    const yavl::Vec<T, 2>& vec)
 {
-    MAT2_MUL_VEC_COMMON_EXPRS(float, _mm_hadd_ps)
+    MAT2_MUL_VEC_COMMON_EXPRS(T, _mm_hadd_ps)
 }
 
 template <typename T>
-    requires yavl::is_int32_v<T>
-static inline Vec<T, 2> mat2_mul_vec_i32(const Mat<T, 2>& mat,
-    const Vec<T, 2>& vec)
+    //requires yavl::is_int32_v<T>
+static inline yavl::Vec<T, 2> mat2_mul_vec_i32(const yavl::Mat<T, 2>& mat,
+    const yavl::Vec<T, 2>& vec)
 {
     MAT2_MUL_VEC_COMMON_EXPRS(T, _mm_hadd_epi32)
 }
 
-static inline Vec<double, 2> mat2_mul_vec_f64(const Mat<double, 2>& mat,
-    const Vec<double, 2>& vec)
+template <typename T>
+    requires yavl::is_double_v<T>
+static inline yavl::Vec<T, 2> mat2_mul_vec_f64(const yavl::Mat<T, 2>& mat,
+    const yavl::Vec<T, 2>& vec)
 {
-    MAT2_MUL_VEC_COMMON_EXPRS(double, _mm256_hadd_pd)
+    MAT2_MUL_VEC_COMMON_EXPRS(T, _mm256_hadd_pd)
 }
 
 template <typename T>
     requires yavl::is_int64_v<T>
-static inline Vec<T, 2> mat2_mul_vec_i64(const Mat<T, 2>& mat,
-    const Vec<T, 2>& vec)
+static inline yavl::Vec<T, 2> mat2_mul_vec_i64(const yavl::Mat<T, 2>& mat,
+    const yavl::Vec<T, 2>& vec)
 {
     auto tmpv4a = Vec<T, 4>(mat.m[0]);
     auto tmpv4b = Vec<T, 4>(vec[0], vec[0], vec[1], vec[1]);
-    auto vm = Vec<T, 4>((tmpv4a * tmpv4b).shuffle<0, 2, 1, 3>().m);
+    auto vm = Vec<T, 4>((tmpv4a * tmpv4b).template shuffle<0, 2, 1, 3>().m);
     return Vec<T, 2>(vm[0] + vm[1], vm[2] + vm[3]);
 }
 
-template <typename T>
-    requires yavl::is_int64_v<T>
-static inline Vec<T, 2> mat2_mul_vec_i64(const Mat<T, 2>& mat,
-    const Vec<T, 2>& vec)
-{
-    return Vec<T, 2>();
-}
-
 template <typename T, uint32_t N>
-static inline Vec<T, N> sse42_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
+static inline yavl::Vec<T, N> sse42_mat_mul_vec_impl(const yavl::Mat<T, N>& mat,
+    const yavl::Vec<T, N>& vec)
+{
     // Check comments in avx512 impl
-    Vec<T, N> tmp;
+    yavl::Vec<T, N> tmp;
     if constexpr (N == 2) {
         if constexpr (std::is_floating_point_v<T>) {
             tmp = mat2_mul_vec_f32(mat, vec);
@@ -223,7 +222,7 @@ static inline Vec<T, N> sse42_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<T
         }
     }
     else {
-        static_for<Mat<T, N>::MSize>([&](const auto i) {
+        static_for<yavl::Mat<T, N>::MSize>([&](const auto i) {
             if constexpr (std::is_floating_point_v<T>) {
                 auto vm = _mm_set1_ps(vec[i]);
                 // If we're using this impl, it mean FMA not available
@@ -240,9 +239,11 @@ static inline Vec<T, N> sse42_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<T
 }
 
 template <typename T, uint32_t N>
-static inline Vec<T, N> avx_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<T, N>& vec) {
+static inline yavl::Vec<T, N> avx_mat_mul_vec_impl(const yavl::Mat<T, N>& mat,
+    const yavl::Vec<T, N>& vec)
+{
     // Check comments in avx512 impl
-    Vec<T, N> tmp;
+    yavl::Vec<T, N> tmp;
     if constexpr (N == 2) {
         if constexpr (std::is_floating_point_v<T>) {
             if constexpr (sizeof(T) == 4)
@@ -258,8 +259,8 @@ static inline Vec<T, N> avx_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<T, 
         }
     }
     else {
-        if constexpr (sizoef(T) == 4) {
-            static_for<Mat<T, N>::MSize>([&](const auto i) {
+        if constexpr (sizeof(T) == 4) {
+            yavl::static_for<yavl::Mat<T, N>::MSize>([&](const auto i) {
                 auto v1 = vec[i << 1];
                 auto v2 = vec[i << 1 + 1];
                 if constexpr (std::is_floating_point_v<T>) {
@@ -272,14 +273,14 @@ static inline Vec<T, N> avx_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<T, 
                 else {
                     auto vm = _mm256_set1_epi32(0);
                     auto b = _mm256_setr_epi32(v1, v1, v1, v1, v2, v2, v2, v2);
-                    vm = _mm256_add_epi32(vm256, _mm256_mullo_epi32(mat.m[i], vm));
+                    vm = _mm256_add_epi32(_mm256_mullo_epi32(mat.m[i], b), vm);
                     auto vm_flip = _mm256_permute2x128_si256(vm, vm, 1);
                     tmp.m = _mm256_extracti128_si256(_mm256_add_epi32(vm, vm_flip), 0);
                 }
             });
         }
         else {
-            static_for<Mat<T, N>::MSize>([&](const auto i) {
+            yavl::static_for<yavl::Mat<T, N>::MSize>([&](const auto i) {
                 if constexpr (std::is_floating_point_v<T>) {
                     auto vm = _mm256_set1_pd(vec[i]);
                     tmp.m = _mm256_fmadd_pd(mat.m[i], vm, tmp.m);
@@ -295,6 +296,9 @@ static inline Vec<T, N> avx_mat_mul_vec_impl(const Mat<T, N>& mat, const Vec<T, 
 }
 
 } // namespace detail
+
+namespace yavl
+{
 
 template <>
 struct Col<float, 4> {
@@ -336,6 +340,48 @@ struct Col<float, 3> {
     YAVL_DEFINE_COL_BASIC_FP_OP(, ps, ps)
 };
 
+template <>
+struct Col<double, 4> {
+    YAVL_TYPE_ALIAS(double, 4, 4)
+
+    Scalar* arr;
+    __m256d m;
+
+    Col(const Scalar* d)
+        : arr(const_cast<Scalar*>(d))
+    {
+        m = _mm256_setr_pd(arr[0], arr[1], arr[2], arr[3]);
+    }
+
+    // Miscs
+    YAVL_DEFINE_COL_MISC_FUNCS
+
+    // Operators
+    YAVL_DEFINE_COL_BASIC_FP_OP(256, pd, pd)
+};
+
+template <>
+struct Col<double, 3> {
+    YAVL_TYPE_ALIAS(double, 3, 4)
+
+    Scalar* arr;
+    __m256d m;
+
+    Col(const Scalar* d)
+        : arr(const_cast<Scalar*>(d))
+    {
+        m = _mm256_setr_pd(arr[0], arr[1], arr[2], 0);
+    }
+
+    // Miscs
+    YAVL_DEFINE_COL_MISC_FUNCS
+
+    // Operators
+    YAVL_DEFINE_COL_BASIC_FP_OP(256, pd, pd)
+};
+
+} // namespace yavl
+
 // Include possible common impl
 #if defined(YAVL_X86_SSE42)
     #include <yavl/mat/mat2_sse42.h>
@@ -366,5 +412,3 @@ struct Col<float, 3> {
 #undef OP_SCALAR_EXPRS
 #undef OP_SCALAR_ASSIGN_EXPRS
 #undef OP_FRIEND_SCALAR_EXPRS
-
-} // namespace yavl

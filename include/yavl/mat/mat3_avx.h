@@ -15,7 +15,7 @@ struct alignas(32) Mat<float, 3> {
     // Operators
     YAVL_DEFINE_MAT3_COMMON_OP(256, , ps, mul)
 
-    auto operator *(const Vec<Scalar, Size>& v) const {
+    Vec<Scalar, Size> operator *(const Vec<Scalar, Size>& v) const {
         auto vm1 = _mm256_setr_ps(v[0], v[0], v[0], v[0], v[1], v[1],
             v[1], v[1]);
         auto vm2 = _mm_set1_ps(v[2]);
@@ -23,22 +23,30 @@ struct alignas(32) Mat<float, 3> {
         vm2 = _mm_mul_ps(m2, vm2);
 
         Vec<Scalar, Size> tmp;
+        __m128 col[2];
+        col[0] = _mm256_extractf128_ps(vm1, 0);
+        col[1] = _mm256_extractf128_ps(vm1, 1);
         static_for<2>([&](const auto i) constexpr {
-            auto col = _mm256_extractf128_ps(vm1, i);
-            tmp.m = _mm_add_ps(col, tmp.m);
+            // Even constexpr cannot make the i parameter an immediate
+            //auto col = _mm256_extractf128_ps(vm1, i);
+            tmp.m = _mm_add_ps(col[i], tmp.m);
         });
         tmp.m = _mm_add_ps(vm2, tmp.m);
         return tmp;
     }
 
-    auto operator *(const Mat& mat) const {
+    Mat operator *(const Mat& mat) const {
         Mat tmp;
         __m128 col[3];
         col[0] = _mm256_extractf128_ps(mat.m1, 0);
         col[1] = _mm256_extractf128_ps(mat.m1, 1);
         col[2] = mat.m2;
         static_for<Size>([&](const auto i) {
-            auto tm = _mm256_broadcast_f32x4(col[i]);
+            #if defined(YAVL_X86_AVX512VL)
+                auto tm = _mm256_broadcast_f32x4(col[i]);
+            #else
+                auto tm = _mm256_broadcast_ps(&col[i]);
+            #endif
             tmp.m1 = _mm256_fmadd_ps(m1, tm, tmp.m1);
             tmp.m2 = _mm_fmadd_ps(m2, col[i], tmp.m2);
         });
