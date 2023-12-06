@@ -89,7 +89,8 @@ struct alignas(16) Mat<float, 3> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(, ps, mul)
+    YAVL_DEFINE_MAT3_INDEX_OP
+    YAVL_DEFINE_MAT_MUL_OP(, ps, mul)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD

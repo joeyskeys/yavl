@@ -131,14 +131,23 @@
     return *this;                                                       \
 }
 
-#define YAVL_DEFINE_MAT3_COMMON_OP(BITS1, BITS2, IT, MUL)               \
-    YAVL_DEFINE_MAT_INDEX_OP                                            \
+#define YAVL_DEFINE_MAT3_INDEX_OP                                       \
+    auto operator [](const uint32_t idx) {                              \
+        assert(idx < Size);                                             \
+        return Col<Scalar, Size>(&arr[idx * 4]);                        \
+    }                                                                   \
+    const auto operator [](const uint32_t idx) const {                  \
+        assert(idx < Size);                                             \
+        return Col<Scalar, Size>(&arr[idx * 4]);                        \
+    }
+    
+#define YAVL_DEFINE_MAT3_MUL_OP(BITS1, BITS2, IT, MUL)                  \
     auto operator *(const Scalar s) const                               \
     {                                                                   \
         MAT3_MUL_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)                    \
     }                                                                   \
     auto operator *=(const Scalar s) {                                  \
-        MAT3_MUL_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)                    \
+        MAT3_MUL_ASSIGN_SCALAR_EXPRS(BITS1, BITS2, IT, MUL)             \
     }                                                                   \
     auto operator *(const Col<Scalar, Size>& v) const {                 \
         auto vec = Vec<Scalar, Size>{v.m};                              \
@@ -149,6 +158,10 @@
         *this = tmp;                                                    \
         return *this;                                                   \
     }
+
+#define YAVL_DEFINE_MAT3_COMMON_OP(BITS1, BITS2, IT, MUL)               \
+    YAVL_DEFINE_MAT3_INDEX_OP                                           \
+    YAVL_DEFINE_MAT3_MUL_OP(BITS1, BITS2, IT, MUL)
 
 #define YAVL_DEFINE_MAT3_TRANSPOSE                                      \
     auto transpose() const {                                            \
@@ -168,9 +181,13 @@ namespace detail
 #define MAT2_MUL_VEC_COMMON_EXPRS(TYPE, HADD)                           \
     auto tmpv4a = yavl::Vec<TYPE, 4>(mat.m[0]);                         \
     auto tmpv4b = yavl::Vec<TYPE, 4>(vec[0], vec[0], vec[1], vec[1]);   \
-    auto vm = (tmpv4a * tmpv4b).template shuffle<0, 2, 1, 3>().m;       \
-    tmpv4a = yavl::Vec<TYPE, 4>(HADD(vm, vm));                          \
-    return yavl::Vec<TYPE, 2>(tmpv4a[0], tmpv4a[1]);
+    /*                                                                  \
+    auto vm1 = (tmpv4a * tmpv4b).template shuffle<0, 2, 1, 3>();        \
+    auto vm2 = vm1.template shuffle<2, 3, 0, 1>();                      \
+    tmpv4a = yavl::Vec<TYPE, 4>(HADD(vm1.m, vm2.m));                    \
+    return yavl::Vec<TYPE, 2>(tmpv4a[0], tmpv4a[1]);*/                  \
+    auto vm = tmpv4a * tmpv4b;                                          \
+    return yavl::Vec<TYPE, 2>(vm[0] + vm[2], vm[1] + vm[3]);
 
 template <typename T>
     requires yavl::is_float_v<T>

@@ -51,11 +51,15 @@ TEMPLATE_PRODUCT_TEST_CASE("Mat tests", "[mat]", (Mat2, Mat3, Mat4), (float, dou
     SECTION("Ctor tests") {
         ctor_test(mat0, 0);
         ctor_test(mat1, 1);
-        PROPER_EQUAL(mat2.arr[0], 0, mat2);
-        if constexpr (TestType::Size > 2)
-            PROPER_EQUAL(mat2.arr[4], 4, mat2);
-        if constexpr (TestType::Size > 3)
-            PROPER_EQUAL(mat2.arr[9], 9, mat2);
+        if constexpr (TestType::Size == 2) {
+            PROPER_EQUAL(mat2[1][0], 2, mat2);
+        }
+        else if constexpr (TestType::Size == 3) {
+            PROPER_EQUAL(mat2[1][0], 3, mat2);
+        }
+        else {
+            PROPER_EQUAL(mat2[1][0], 4, mat2);
+        }
     }
 
     SECTION("Operator tests") {

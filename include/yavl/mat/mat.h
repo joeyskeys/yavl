@@ -162,10 +162,12 @@ struct Col {
 };
 
 #define YAVL_DEFINE_MAT_INDEX_OP                                        \
-    auto operator [](uint32_t idx) {                                    \
+    auto operator [](const uint32_t idx) {                              \
+        assert(idx < Size);                                             \
         return Col<Scalar, Size>(&arr[idx * Size]);                     \
     }                                                                   \
-    const auto operator [](uint32_t idx) const {                        \
+    const auto operator [](const uint32_t idx) const {                  \
+        assert(idx < Size);                                             \
         return Col<Scalar, Size>(&arr[idx * Size]);                     \
     }
 
