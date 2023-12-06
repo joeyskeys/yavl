@@ -159,7 +159,7 @@
         return *this;                                                   \
     }
 
-#define YAVL_DEFINE_MAT3_COMMON_OP(BITS1, BITS2, IT, MUL)               \
+#define YAVL_DEFINE_MAT3_OP(BITS1, BITS2, IT, MUL)                      \
     YAVL_DEFINE_MAT3_INDEX_OP                                           \
     YAVL_DEFINE_MAT3_MUL_OP(BITS1, BITS2, IT, MUL)
 
@@ -277,24 +277,28 @@ static inline yavl::Vec<T, N> avx_mat_mul_vec_impl(const yavl::Mat<T, N>& mat,
     }
     else {
         if constexpr (sizeof(T) == 4) {
-            yavl::static_for<yavl::Mat<T, N>::MSize>([&](const auto i) {
-                auto v1 = vec[i << 1];
-                auto v2 = vec[i << 1 + 1];
-                if constexpr (std::is_floating_point_v<T>) {
-                    auto vm = _mm256_set1_ps(0);
+            if constexpr (std::is_floating_point_v<T>) {
+                __m256 vm = _mm256_set1_ps(0);
+                yavl::static_for<yavl::Mat<T, N>::MSize>([&](const auto i) {
+                    auto v1 = vec[i << 1];
+                    auto v2 = vec[(i << 1) + 1];
                     auto b = _mm256_setr_ps(v1, v1, v1, v1, v2, v2, v2, v2);
                     vm = _mm256_fmadd_ps(mat.m[i], b, vm);
                     auto vm_flip = _mm256_permute2f128_ps(vm, vm, 1);
                     tmp.m = _mm256_extractf128_ps(_mm256_add_ps(vm, vm_flip), 0);
-                }
-                else {
-                    auto vm = _mm256_set1_epi32(0);
+                });
+            }
+            else {
+                __m256i vm = _mm256_set1_epi32(0);
+                yavl::static_for<yavl::Mat<T, N>::MSize>([&](const auto i) {
+                    auto v1 = vec[i << 1];
+                    auto v2 = vec[(i << 1) + 1];
                     auto b = _mm256_setr_epi32(v1, v1, v1, v1, v2, v2, v2, v2);
                     vm = _mm256_add_epi32(_mm256_mullo_epi32(mat.m[i], b), vm);
                     auto vm_flip = _mm256_permute2x128_si256(vm, vm, 1);
                     tmp.m = _mm256_extracti128_si256(_mm256_add_epi32(vm, vm_flip), 0);
-                }
-            });
+                });
+            }
         }
         else {
             yavl::static_for<yavl::Mat<T, N>::MSize>([&](const auto i) {

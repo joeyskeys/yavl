@@ -105,12 +105,12 @@ TEMPLATE_PRODUCT_TEST_CASE("Mat tests", "[mat]", (Mat2, Mat3, Mat4), (float, dou
             PROPER_EQUAL(mat6.arr[3], 11, mat6);
         }
         else if constexpr (TestType::Size == 3) {
-            PROPER_EQUAL(mat6.arr[0], 15, mat6);
-            PROPER_EQUAL(mat6.arr[4], 54, mat6);
+            PROPER_EQUAL(mat6[0][0], 15, mat6);
+            PROPER_EQUAL(mat6[1][1], 54, mat6);
         }
         else {
-            PROPER_EQUAL(mat6.arr[0], 56, mat6);
-            PROPER_EQUAL(mat6.arr[5], 174, mat6);
+            PROPER_EQUAL(mat6[0][0], 56, mat6);
+            PROPER_EQUAL(mat6[1][1], 174, mat6);
         }
     }
 
@@ -121,12 +121,12 @@ TEMPLATE_PRODUCT_TEST_CASE("Mat tests", "[mat]", (Mat2, Mat3, Mat4), (float, dou
             PROPER_EQUAL(mat3.arr[2], 1, mat3);
         }
         else if constexpr (TestType::Size == 3) {
-            PROPER_EQUAL(mat3.arr[4], 4, mat3);
-            PROPER_EQUAL(mat3.arr[3], 1, mat3);
+            PROPER_EQUAL(mat3[1][1], 4, mat3);
+            PROPER_EQUAL(mat3[1][0], 1, mat3);
         }
         else {
-            PROPER_EQUAL(mat3.arr[5], 5, mat3);
-            PROPER_EQUAL(mat3.arr[4], 1, mat3);
+            PROPER_EQUAL(mat3[1][1], 5, mat3);
+            PROPER_EQUAL(mat3[1][0], 1, mat3);
         }
     }
 

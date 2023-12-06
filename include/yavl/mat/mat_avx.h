@@ -11,8 +11,8 @@ do {                                                                    \
     tmp1 = _mm256_unpackhi_pd((col0), (col1));                          \
     tmp3 = _mm256_unpackhi_pd((col2), (col3));                          \
     (col0) = _mm256_permute2f128_pd(tmp0, tmp2, 0x20);                  \
-    (col1) = _mm256_permute2f128_pd(tmp0, tmp2, 0x31);                  \
-    (col2) = _mm256_permute2f128_pd(tmp1, tmp3, 0x20);                  \
+    (col1) = _mm256_permute2f128_pd(tmp1, tmp3, 0x20);                  \
+    (col2) = _mm256_permute2f128_pd(tmp0, tmp2, 0x31);                  \
     (col3) = _mm256_permute2f128_pd(tmp1, tmp3, 0x31);                  \
 } while (0)
 
@@ -32,26 +32,22 @@ do {                                                                    \
 #define MAT_MUL_MAT_EXPRS                                               \
 {                                                                       \
     Mat tmp;                                                            \
-    static_for<MSize>([&](const auto i) {                               \
-        __m256 m1 = _mm256_set1_ps(0);                                  \
+    __m256 m1 = _mm256_set1_ps(0);                                      \
+    __m256 m2 = _mm256_set1_ps(0);                                      \
+    __m128 col[4];                                                      \
+    col[0] = _mm256_extractf128_ps(m[0], 0);                            \
+    col[1] = _mm256_extractf128_ps(m[0], 1);                            \
+    col[2] = _mm256_extractf128_ps(m[1], 0);                            \
+    col[3] = _mm256_extractf128_ps(m[1], 1);                            \
+    static_for<Size>([&](const auto i) {                                \
+        __m128 cola = col[i];                                           \
+        __m256 va = _mm256_broadcast_ps(&cola);                         \
         static_for<MSize>([&](const auto j) {                           \
-            auto v1 = mat.arr[(i << 1) * Size + (j << 1)];              \
-            auto v2 = mat.arr[(i << 1) * Size + (j << 1 + 1)];          \
-            auto bij = _mm256_setr_ps(v1, v1, v1, v1, v2, v2, v2, v2);  \
-            m1 = _mm256_fmadd_ps(m[j], bij, m1);                        \
+            auto v1 = mat.arr[(j << 1) * Size + i];                     \
+            auto v2 = mat.arr[((j << 1) + 1) * Size + i];               \
+            auto vb = _mm256_setr_ps(v1, v1, v1, v1, v2, v2, v2, v2);   \
+            tmp.m[j] = _mm256_fmadd_ps(va, vb, tmp.m[j]);               \
         });                                                             \
-        auto m1_flip = _mm256_permute2f128_ps(m1, m1, 1);               \
-        m1 = _mm256_add_ps(m1, m1_flip);                                \
-        __m256 m2 = _mm256_set1_ps(0);                                  \
-        static_for<MSize>([&](const auto j) {                           \
-            auto v1 = mat.arr[((i << 1) + 1) * Size + (j << 1)];        \
-            auto v2 = mat.arr[((i << 1) + 1) * Size + (j << 1 + 1)];    \
-            auto bij = _mm256_setr_ps(v1, v1, v1, v1, v2, v2, v2, v2);  \
-            m2 = _mm256_fmadd_ps(m[j], bij, m2);                        \
-        });                                                             \
-        auto m2_flip = _mm256_permute2f128_ps(m2, m2, 1);               \
-        m2 = _mm256_add_ps(m2, m2_flip);                                \
-        tmp.m[i] = _mm256_permute2f128_ps(m1, m2, 0b00100000);          \
     });                                                                 \
     return tmp;                                                         \
 }
@@ -154,7 +150,7 @@ struct alignas(32) Mat<double, 4> {
 
 template <>
 struct alignas(32) Mat<double, 3> {
-    YAVL_MAT_ALIAS_VECTORIZED(double, 3, 8, 3);
+    YAVL_MAT_ALIAS_VECTORIZED(double, 3, 4, 3);
 
     YAVL_DEFINE_MAT_UNION(__m256d)
 
@@ -174,7 +170,8 @@ struct alignas(32) Mat<double, 3> {
     }
 
     // Operators
-    YAVL_DEFINE_MAT_OP(256, pd, mul)
+    YAVL_DEFINE_MAT3_INDEX_OP
+    YAVL_DEFINE_MAT_MUL_OP(256, pd, mul)
 
     // Misc funcs
     YAVL_DEFINE_DATA_METHOD

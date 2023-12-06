@@ -13,7 +13,7 @@ struct alignas(32) Mat<float, 3> {
     YAVL_MAT3_VECTORIZED_CTOR(256, , ps)
 
     // Operators
-    YAVL_DEFINE_MAT3_COMMON_OP(256, , ps, mul)
+    YAVL_DEFINE_MAT3_OP(256, , ps, mul)
 
     Vec<Scalar, Size> operator *(const Vec<Scalar, Size>& v) const {
         auto vm1 = _mm256_setr_ps(v[0], v[0], v[0], v[0], v[1], v[1],
@@ -38,17 +38,21 @@ struct alignas(32) Mat<float, 3> {
     Mat operator *(const Mat& mat) const {
         Mat tmp;
         __m128 col[3];
-        col[0] = _mm256_extractf128_ps(mat.m1, 0);
-        col[1] = _mm256_extractf128_ps(mat.m1, 1);
-        col[2] = mat.m2;
+        col[0] = _mm256_extractf128_ps(m1, 0);
+        col[1] = _mm256_extractf128_ps(m1, 1);
+        col[2] = m2;
         static_for<Size>([&](const auto i) {
             #if defined(YAVL_X86_AVX512VL)
-                auto tm = _mm256_broadcast_f32x4(col[i]);
+                auto tm1a = _mm256_broadcast_f32x4(col[i]);
             #else
-                auto tm = _mm256_broadcast_ps(&col[i]);
+                auto tm1a = _mm256_broadcast_ps(&col[i]);
             #endif
-            tmp.m1 = _mm256_fmadd_ps(m1, tm, tmp.m1);
-            tmp.m2 = _mm_fmadd_ps(m2, col[i], tmp.m2);
+            auto v1 = mat[0][i];
+            auto v2 = mat[1][i];
+            auto tm1b = _mm256_setr_ps(v1, v1, v1, 0, v2, v2, v2, 0);
+            auto tm2 = _mm_set1_ps(mat[2][i]);
+            tmp.m1 = _mm256_fmadd_ps(tm1a, tm1b, tmp.m1);
+            tmp.m2 = _mm_fmadd_ps(col[i], tm2, tmp.m2);
         });
         return tmp;
 

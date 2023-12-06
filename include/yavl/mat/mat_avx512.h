@@ -222,7 +222,7 @@ struct alignas(64) Mat<double, 3> {
     YAVL_MAT3_VECTORIZED_CTOR(512, 256, pd)
 
     // Operators
-    YAVL_DEFINE_MAT3_COMMON_OP(512, , pd, mul)
+    YAVL_DEFINE_MAT3_OP(512, , pd, mul)
 
     auto operator *(const Vec<Scalar, Size>& v) const {
         auto vm1 = _mm512_setr_pd(v[0], v[0], v[0], v[0], v[1], v[1],
@@ -378,7 +378,7 @@ struct alignas(64) Mat<I, 3, true, enable_if_int64_t<I>> {
     YAVL_MAT3_VECTORIZED_CTOR(512, 256, epi64)
 
     // Operators
-    YAVL_DEFINE_MAT3_COMMON_OP(512, 256, epi64, mullo)
+    YAVL_DEFINE_MAT3_OP(512, 256, epi64, mullo)
 
     auto operator *(const Vec<Scalar, Size>& v) const {
         auto vm1 = _mm512_setr_epi64(v[0], v[0], v[0], v[0], v[1], v[1],
