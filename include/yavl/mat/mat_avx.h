@@ -60,19 +60,7 @@ struct alignas(32) Mat<float, 4> {
 
     // Ctors
     YAVL_MAT_VECTORIZED_CTOR(256, ps, __m256)
-
-    template <typename... Ts>
-        requires (std::default_initializable<Ts> && ...)
-    constexpr Mat(Ts... args) {
-        static_assert(sizeof...(args) == Size2);
-        auto setf = [&](const uint32_t i, const auto t0, const auto t1,
-            const auto t2, const auto t3, const auto t4, const auto t5,
-            const auto t6, const auto t7)
-        {
-            m[i] = _mm256_setr_ps(t0, t1, t2, t3, t4, t5, t6, t7);
-        };
-        apply_by8(0, setf, args...);
-    }
+    YAVL_MAT_CTOR_BY8(256, ps)
 
     // Operators
     YAVL_DEFINE_MAT_OP(256, ps, mul)
@@ -117,18 +105,7 @@ struct alignas(32) Mat<double, 4> {
 
     // Ctors
     YAVL_MAT_VECTORIZED_CTOR(256, pd, __m256d)
-
-    template <typename... Ts>
-        requires (std::default_initializable<Ts> && ...)
-    constexpr Mat(Ts... args) {
-        static_assert(sizeof...(args) == Size2);
-        auto setf = [&](const uint32_t i, const auto t0, const auto t1,
-            const auto t2, const auto t3)
-        {
-            m[i] = _mm256_setr_pd(t0, t1, t2, t3);
-        };
-        apply_by4(0, setf, args...);
-    }
+    YAVL_MAT_CTOR_BY4(256, pd)
 
     // Operators
     YAVL_DEFINE_MAT_OP(256, pd, mul);
@@ -156,18 +133,7 @@ struct alignas(32) Mat<double, 3> {
 
     // Ctors
     YAVL_MAT_VECTORIZED_CTOR(256, pd, __m256d)
-
-    template <typename... Ts>
-        requires (std::default_initializable<Ts> && ...)
-    constexpr Mat(Ts... args) {
-        static_assert(sizeof...(args) == Size2);
-        auto setf = [&](const uint32_t i, const auto t0, const auto t1,
-            const auto t2)
-        {
-            m[i] = _mm256_setr_pd(t0, t1, t2, 0);
-        };
-        apply_by3(0, setf, args...);
-    }
+    YAVL_MAT_CTOR_BY3(256, pd)
 
     // Operators
     YAVL_DEFINE_MAT3_INDEX_OP

@@ -51,19 +51,7 @@ struct alignas(32) Mat<I, 4, true, enable_if_int32_t<I>> {
 
     // Ctors
     YAVL_MAT_VECTORIZED_CTOR(256, epi32, __m256)
-
-    template <typename... Ts>
-        requires (std::default_initializable<Ts> && ...)
-    constexpr Mat(Ts... args) {
-        static_assert(sizeof...(args) == Size2);
-        auto seti = [&](const uint32_t i, const auto t0, const auto t1,
-            const auto t2, const auto t3, const auto t4, const auto t5,
-            const auto t6, const auto t7)
-        {
-            m[i] = _mm256_setr_epi32(t0, t1, t2, t3, t4, t5, t6, t7);
-        };
-        apply_by8(0, seti, args...);
-    }
+    YAVL_MAT_CTOR_BY8(256, epi32)
 
     // Operators
     YAVL_DEFINE_MAT_OP(256, epi32, mullo)

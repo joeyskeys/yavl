@@ -36,18 +36,7 @@ struct alignas(16) Mat<float, 4> {
 
     // Ctors
     YAVL_MAT_VECTORIZED_CTOR(, ps, __m128)
-
-    template <typename... Ts>
-        requires (std::default_initializable<Ts> && ...)
-    constexpr Mat(Ts... args) {
-        static_assert(sizeof...(args) == Size2);
-        auto setf = [&](const uint32_t i, const auto t0, const auto t1,
-            const auto t2, const auto t3)
-        {
-            m[i] = _mm_setr_ps(t0, t1, t2, t3);
-        };
-        apply_by4(0, setf, args...);
-    }
+    YAVL_MAT_CTOR_BY4(, ps)
 
     // Operators
     YAVL_DEFINE_MAT_OP(, ps, mul)
@@ -75,18 +64,7 @@ struct alignas(16) Mat<float, 3> {
     
     // Ctors
     YAVL_MAT_VECTORIZED_CTOR(, ps, __m128)
-
-    template <typename... Ts>
-        requires (std::default_initializable<Ts> && ...)
-    constexpr Mat(Ts... args) {
-        static_assert(sizeof...(args) == Size2);
-        auto setf = [&](const uint32_t i, const auto t0, const auto t1,
-            const auto t2)
-        {
-            m[i] = _mm_setr_ps(t0, t1, t2, 0);
-        };
-        apply_by3(0, setf, args...);
-    }
+    YAVL_MAT_CTOR_BY3(, ps)
 
     // Operators
     YAVL_DEFINE_MAT3_INDEX_OP
@@ -132,18 +110,7 @@ struct alignas(16) Mat<I, 4, true, enable_if_int32_t<I>> {
 
     // Ctors
     YAVL_MAT_VECTORIZED_CTOR(, epi32, __m128i)
-
-    template <typename... Ts>
-        requires (std::default_initializable<Ts> && ...)
-    constexpr Mat(Ts... args) {
-        static_assert(sizeof...(args) == Size2);
-        auto seti = [&](const uint32_t i, const auto t0, const auto t1,
-            const auto t2, const auto t3)
-        {
-            m[i] = _mm_setr_epi32(t0, t1, t2, t3);
-        }
-        apply_by4(0, seti, args...);
-    }
+    YAVL_MAT_CTOR_BY4(, epi32)
 
     // Operators
     YAVL_DEFINE_MAT_OP(, epi32, mullo)
@@ -172,18 +139,7 @@ struct alignas(16) Mat<I, 3, true, enable_if_int32_t<I>> {
 
     // Ctors
     YAVL_MAT_VECTORIZED_CTOR(, epi32, __m128i)
-
-    template <typename... Ts>
-        requires (std::default_initializable<Ts> && ...)
-    constexpr Mat(Ts... args) {
-        static_assert(sizeof...(args) == Size2);
-        auto seti = [&](const uint32_t i, const auto t0, const auto t1,
-            const auto t2)
-        {
-            m[i] = _mm_setr_epi32(t0, t1, t2, 0);
-        }
-        apply_by3(0, seti, args...);
-    }
+    YAVL_MAT_CTOR_BY3(, epi32)
 
     // Operators
     YAVL_DEFINE_MAT_OP(, epi32, mullo)
