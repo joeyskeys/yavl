@@ -149,13 +149,13 @@ struct Vec {
 
     template <int ...Is>
     inline Vec shuffle() const {
-        static_assert(sizeof...(Is) == Size);                           \
-        std::array<int, sizeof...(Is)> indice{ Is... };                 \
-        Vec tmp;                                                        \
-        static_for<Size>([&](const auto i) {                            \
-            tmp.arr[i] = arr[indice[i]];                                \
-        });                                                             \
-        return tmp;                                                     \
+        static_assert(sizeof...(Is) == Size);
+        std::array<int, sizeof...(Is)> indice{ Is... };
+        Vec tmp;
+        static_for<Size>([&](const auto i) {
+            tmp.arr[i] = arr[indice[i]];
+        });
+        return tmp;
     }
 
     YAVL_DEFINE_MISC_FUNCS

@@ -9,7 +9,9 @@ using namespace yavl;
 int main() {
     Vec4f a{1};
     Vec4f b{2};
-    auto c = a + b;
-    printf("ret: %f", c[0]);
+    auto st = rdtsc();
+    auto c = a * b;
+    auto dur = static_cast<double>(rdtsc() - st);
+    printf("ret: %f, cc: %.2f\n", c[0], dur);
     return 0;
 }
