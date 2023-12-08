@@ -13,3 +13,4 @@ set(CMAKE_CXX_FLAGS "-march=native" ${CMAKE_CXX_FLAGS})
 include_directories(include)
 
 add_subdirectory(tests)
+add_subdirectory(benchmarks)

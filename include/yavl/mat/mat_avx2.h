@@ -44,7 +44,7 @@ namespace yavl
 }
 
 template <typename I>
-struct alignas(32) Mat<I, 4, true, enable_if_int32_t<I>> {
+struct alignas(32) Mat<I, 4, enable_if_int32_t<I>> {
     YAVL_MAT_ALIAS_VECTORIZED(I, 4, 8, 2)
 
     YAVL_DEFINE_MAT_UNION(__m256i)

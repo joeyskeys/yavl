@@ -364,6 +364,7 @@ namespace yavl
 template <>
 struct Col<float, 4> {
     YAVL_TYPE_ALIAS(float, 4, 4)
+    static constexpr bool vectorized = true;
 
     Scalar* arr;
     __m128 m;
@@ -384,6 +385,7 @@ struct Col<float, 4> {
 template <>
 struct Col<float, 3> {
     YAVL_TYPE_ALIAS(float, 3, 4)
+    static constexpr bool vectorized = true;
 
     Scalar* arr;
     __m128 m;
@@ -404,6 +406,7 @@ struct Col<float, 3> {
 template <>
 struct Col<double, 4> {
     YAVL_TYPE_ALIAS(double, 4, 4)
+    static constexpr bool vectorized = true;
 
     Scalar* arr;
     __m256d m;
@@ -424,6 +427,7 @@ struct Col<double, 4> {
 template <>
 struct Col<double, 3> {
     YAVL_TYPE_ALIAS(double, 3, 4)
+    static constexpr bool vectorized = true;
 
     Scalar* arr;
     __m256d m;

@@ -1,0 +1,1 @@
+add_executable(vec_benchmarks vec_benchmarks.cpp)

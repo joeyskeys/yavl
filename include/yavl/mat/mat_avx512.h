@@ -261,7 +261,7 @@ struct alignas(64) Mat<double, 3> {
 }
 
 template <typename I>
-struct alignas(64) Mat<I, 4, true, enable_if_int32_t<I>> {
+struct alignas(64) Mat<I, 4, enable_if_int32_t<I>> {
     YAVL_MAT_ALIAS_VECTORIZED(I, 4, 16, 1)
 
     YAVL_DEFINEMAT_UNION(__m512i)
@@ -316,7 +316,7 @@ struct alignas(64) Mat<I, 4, true, enable_if_int32_t<I>> {
 }
 
 template <typename I>
-struct alignas(64) Mat<I, 4, true, enable_if_int64_t<I>> {
+struct alignas(64) Mat<I, 4, enable_if_int64_t<I>> {
     YAVL_MAT_ALIAS_VECTORIZED(I, 4, 8, 2)
 
     YAVL_DEFINE_MAT_UNION(__m512i)
@@ -345,7 +345,7 @@ struct alignas(64) Mat<I, 4, true, enable_if_int64_t<I>> {
 };
 
 template <typename I>
-struct alignas(64) Mat<I, 3, true, enable_if_int64_t<I>> {
+struct alignas(64) Mat<I, 3, enable_if_int64_t<I>> {
     YAVL_MAT3_ALIAS_VECTORIZED(I, 3)
 
     YAVL_DEFINE_MAT3_UNION(__m512i, __m256i)

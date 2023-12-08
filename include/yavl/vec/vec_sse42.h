@@ -379,7 +379,7 @@ struct alignas(16) Vec<double, 2> {
     }
 
 template <typename I>
-struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
+struct alignas(16) Vec<I, 4, enable_if_int32_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 4, 4)
 
     union {
@@ -432,7 +432,7 @@ struct alignas(16) Vec<I, 4, true, enable_if_int32_t<I>> {
 };
 
 template <typename I>
-struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
+struct alignas(16) Vec<I, 3, enable_if_int32_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 3, 4)
 
     union {
@@ -491,7 +491,7 @@ struct alignas(16) Vec<I, 3, true, enable_if_int32_t<I>> {
 };
 
 template <typename I>
-struct alignas(16) Vec<I, 2, true, enable_if_int64_t<I>> {
+struct alignas(16) Vec<I, 2, enable_if_int64_t<I>> {
     YAVL_VEC_ALIAS_VECTORIZED(I, 2, 2)
 
     union {

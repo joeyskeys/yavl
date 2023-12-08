@@ -1,6 +1,9 @@
 #pragma once
 
+#include <array>
+#include <cassert>
 #include <concepts>
+#include <numeric>
 #include <stdint.h>
 #include <tuple>
 #include <type_traits>
