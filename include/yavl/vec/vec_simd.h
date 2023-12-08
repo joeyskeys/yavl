@@ -62,11 +62,11 @@
     m = _mm##BITS##_##NAME##_##IT(m, v.m);                              \
     return *this;
 
-#define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                             \
+#define OP_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                         \
     auto vv = _mm##BITS##_set1_##IT(v);                                 \
     return Vec(_mm##BITS##_##NAME##_##IT(m, vv));
 
-#define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                      \
+#define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                  \
     {                                                                   \
         auto vv = _mm##BITS##_set1_##IT(v);                             \
         m = _mm##BITS##_##NAME##_##IT(m, vv);                           \

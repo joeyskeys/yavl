@@ -3,7 +3,7 @@
 namespace yavl
 {
 
-#define MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
+#define MATH_ABS_EXPRS(VT, BITS, IT1, IT2)                              \
     {                                                                   \
         if constexpr (std::is_unsigned_v<Scalar>)                       \
             return *this;                                               \
@@ -74,7 +74,7 @@ struct alignas(32) Vec<I, 4, enable_if_int64_t<I>> {
         return Vec(_mm256_permute4x64_epi64(m, _MM_SHUFFLE(I3, I2, I1, I0)));
     }
 
-    YAVL_DEFINE_MISC_FUNCS
+    YAVL_DEFINE_MISC_FUNCS(Vec)
 
     // Math funcs
     #define MATH_SUM_EXPRS                                              \
@@ -82,7 +82,7 @@ struct alignas(32) Vec<I, 4, enable_if_int64_t<I>> {
         return x + y + z + z;                                           \
     }
 
-    YAVL_DEFINE_MATH_COMMON_FUNCS(256, epi64, epi64x)
+    YAVL_DEFINE_MATH_COMMON_FUNCS(Vec, 256, epi64, epi64x)
 
     #undef MATH_SUM_EXPRS
 };
@@ -111,7 +111,7 @@ struct alignas(32) Vec<I, 3, enable_if_int64_t<I>> {
         return Vec(_mm256_permute4x64_epi64(m, _MM_SHUFFLE(0, I2, I1, I0)));
     }
 
-    YAVL_DEFINE_MISC_FUNCS
+    YAVL_DEFINE_MISC_FUNCS(Vec)
 
     // Math funcs
     #define MATH_SUM_EXPRS                                              \
@@ -119,7 +119,7 @@ struct alignas(32) Vec<I, 3, enable_if_int64_t<I>> {
         return x + y + z;                                               \
     }
 
-    YAVL_DEFINE_MATH_COMMON_FUNCS(256, epi64, epi64x)
+    YAVL_DEFINE_MATH_COMMON_FUNCS(Vec, 256, epi64, epi64x)
 
     #undef MATH_SUM_EXPRS
 };

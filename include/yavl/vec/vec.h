@@ -27,50 +27,7 @@ inline Vec base_shuffle_impl(const Vec& v, Ts ...args) {
     return tmp;
 }
 
-template <typename T, uint32_t N, typename = int>
-struct Vec {
-    YAVL_TYPE_ALIAS(T, N, N)
-    YAVL_VEC_OPTIONAL_ALIAS(Scalar, N)
-
-    static constexpr bool vectorized = false;
-
-    union {
-        struct {
-            Scalar x;
-            Scalar y;
-
-            [[no_unique_address]] Z z;
-            [[no_unique_address]] W w;
-        };
-        struct {
-            Scalar r;
-            Scalar g;
-
-            [[no_unique_address]] B b;
-            [[no_unique_address]] A a;
-        };
-
-        std::array<Scalar, Size> arr;
-    };
-
-    // Ctors
-    constexpr Vec() {
-        arr.fill(static_cast<Scalar>(0));
-    }
-
-    template <typename ...Ts>
-    constexpr Vec(Ts... args) {
-        static_assert(sizeof...(args) == 1 || sizeof...(args) == Size);
-        if constexpr (sizeof...(args) == 1)
-            arr.fill( static_cast<Scalar>(args)... );
-        else
-            arr = { static_cast<Scalar>(args)... };
-    }
-
-    Vec(const Vec&) = default;
-    Vec(Vec&&) = default;
-
-    // Operators
+// Operator macros
 #define COPY_ASSIGN_EXPRS(BITS, IT)                                     \
     {                                                                   \
         std::memcpy(arr.data(), b.arr.data(), sizeof(Scalar) * Size);   \
@@ -94,16 +51,16 @@ struct Vec {
         return *this;                                                   \
     }
 
-#define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                             \
+#define OP_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                         \
     {                                                                   \
-        Vec tmp;                                                        \
+        AT tmp;                                                         \
         static_for<Size>([&](const auto i) {                            \
             tmp[i] = arr[i] OP v;                                       \
         });                                                             \
         return tmp;                                                     \
     }
 
-#define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                      \
+#define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)                  \
     {                                                                   \
         static_for<Size>([&](const auto i) {                            \
             arr[i] OP##= v;                                             \
@@ -120,49 +77,26 @@ struct Vec {
         return tmp;                                                     \
     }
 
-    YAVL_DEFINE_VEC_FP_OP( , , )
-
-#undef COPY_ASSIGN_EXPRS
-#undef OP_VEC_EXPRS
-#undef OP_VEC_ASSIGN_EXPRS
-#undef OP_SCALAR_EXPRS
-#undef OP_SCALAR_ASSIGN_EXPRS
-#undef OP_FRIEND_SCALAR_EXPRS
-
-    // Misc
-#define MISC_SHUFFLE_FUNC                                               \
+// Misc macros
+#define MISC_SHUFFLE_FUNC(VT)                                           \
     template <typename ...Ts>                                           \
         requires (std::default_initializable<Ts> && ...) &&             \
             (std::convertible_to<Ts, Scalar> && ...)                    \
-    inline Vec shuffle(Ts... args) const {                              \
+    inline VT shuffle(Ts... args) const {                               \
         return base_shuffle_impl(*this, args...);                       \
     }
 
-#define YAVL_DEFINE_MISC_FUNCS                                          \
+#define YAVL_DEFINE_MISC_FUNCS(VT)                                      \
     inline auto* data() {                                               \
         return arr.data();                                              \
     }                                                                   \
     inline auto* data() const {                                         \
         return arr.data();                                              \
     }                                                                   \
-    MISC_SHUFFLE_FUNC
+    MISC_SHUFFLE_FUNC(VT)
 
-    template <int ...Is>
-    inline Vec shuffle() const {
-        static_assert(sizeof...(Is) == Size);
-        std::array<int, sizeof...(Is)> indice{ Is... };
-        Vec tmp;
-        static_for<Size>([&](const auto i) {
-            tmp.arr[i] = arr[indice[i]];
-        });
-        return tmp;
-    }
-
-    YAVL_DEFINE_MISC_FUNCS
-
-    // Geometry
-#define GEO_DOT_FUNC                                                    \
-    inline Scalar dot(const Vec& b) const {                             \
+#define GEO_DOT_FUNC(VT)                                                \
+    inline Scalar dot(const VT& b) const {                              \
         GEO_DOT_EXPRS                                                   \
     }
 
@@ -171,25 +105,10 @@ struct Vec {
         return this->operator*(b).sum();                                \
     }
 
-#define YAVL_DEFINE_GEO_FUNCS                                           \
-    GEO_DOT_FUNC
+#define YAVL_DEFINE_GEO_FUNCS(VT)                                       \
+    GEO_DOT_FUNC(VT)
 
-    inline auto cross(const Vec& b) const {
-        static_assert(Vec::Size > 1 && Vec::Size < 4);
-        if constexpr (Vec::Size == 2) {
-            return x * b.y - y * b.x;
-        }
-        else {
-            return Vec(y * b.z - z * b.y, z * b.x - x * b.z,
-                x * b.y - y * b.x);
-        }
-    }
-
-    YAVL_DEFINE_GEO_FUNCS
-
-#undef GEO_DOT_EXPRS
-
-    // Math
+// Math macros
 #define MATH_LENGTH_SQUARED_FUNC                                        \
     inline auto length_squared() const {                                \
         return dot(*this);                                              \
@@ -200,8 +119,8 @@ struct Vec {
         return std::sqrt(length_squared());                             \
     }
 
-#define MATH_NORMALIZE_FUNC                                             \
-    inline Vec& normalize() {                                           \
+#define MATH_NORMALIZE_FUNC(VT)                                         \
+    inline VT& normalize() {                                            \
         Scalar rcp = 1. / length();                                     \
         *this *= rcp;                                                   \
         return *this;                                                   \
@@ -213,14 +132,14 @@ struct Vec {
         return *this * rcp;                                             \
     }
 
-#define MATH_ABS_FUNC(BITS, IT1, IT2)                                   \
+#define MATH_ABS_FUNC(VT, BITS, IT1, IT2)                               \
     inline auto abs() const {                                           \
-        MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
+        MATH_ABS_EXPRS(VT, BITS, IT1, IT2)                              \
     }
 
-#define MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
+#define MATH_ABS_EXPRS(VT, BITS, IT1, IT2)                              \
     {                                                                   \
-        Vec tmp;                                                        \
+        VT tmp;                                                         \
         static_for<Size>([&](const auto i) {                            \
             tmp[i] = std::abs(arr[i]);                                  \
         });                                                             \
@@ -242,23 +161,24 @@ struct Vec {
         return *this * *this;                                           \
     }
 
-#define MATH_RCP_FUNC                                                   \
+#define MATH_RCP_FUNC(VT)                                               \
     inline auto rcp() const {                                           \
-        MATH_RCP_EXPRS                                                  \
+        MATH_RCP_EXPRS(VT)                                              \
     }
-#define MATH_RCP_EXPRS                                                  \
+
+#define MATH_RCP_EXPRS(VT)                                              \
     {                                                                   \
         return Vec(1 / *this);                                          \
     }
 
-#define MATH_SQRT_FUNC                                                  \
+#define MATH_SQRT_FUNC(VT)                                              \
     inline auto sqrt() const {                                          \
-        MATH_SQRT_EXPRS                                                 \
+        MATH_SQRT_EXPRS(VT)                                             \
     }
 
-#define MATH_SQRT_EXPRS                                                 \
+#define MATH_SQRT_EXPRS(VT)                                             \
     {                                                                   \
-        Vec tmp;                                                        \
+        VT tmp;                                                         \
         static_for<Size>([&](const auto i) {                            \
             tmp[i] = std::sqrt(arr[i]);                                 \
         });                                                             \
@@ -304,11 +224,11 @@ struct Vec {
     }
 */
 
-#define MATH_LERP_FUNC(BITS, IT)                                        \
-    inline auto lerp(const Vec& b, const Scalar t) const {              \
+#define MATH_LERP_FUNC(VT, BITS, IT)                                    \
+    inline auto lerp(const VT& b, const Scalar t) const {               \
         MATH_LERP_SCALAR_EXPRS(BITS, IT)                                \
     }                                                                   \
-    inline auto lerp(const Vec& b, const Vec& t) const {                \
+    inline auto lerp(const VT& b, const VT& t) const {                  \
         MATH_LERP_VEC_EXPRS(BITS, IT)                                   \
     }
 
@@ -319,26 +239,99 @@ struct Vec {
 
 #define MATH_LERP_VEC_EXPRS(BITS, IT) MATH_LERP_SCALAR_EXPRS(BITS, IT)
 
-#define YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, IT1, IT2)                   \
+#define YAVL_DEFINE_MATH_COMMON_FUNCS(VT, BITS, IT1, IT2)               \
     MATH_LENGTH_SQUARED_FUNC                                            \
     MATH_LENGTH_FUNC                                                    \
-    MATH_ABS_FUNC(BITS, IT1, IT2)                                       \
+    MATH_ABS_FUNC(VT, BITS, IT1, IT2)                                   \
     MATH_SUM_FUNC                                                       \
     MATH_SQUARE_FUNC
 
-#define YAVL_DEFINE_MATH_FP_FUNCS(BITS, IT)                             \
-    MATH_NORMALIZE_FUNC                                                 \
-    MATH_RCP_FUNC                                                       \
-    MATH_SQRT_FUNC                                                      \
+#define YAVL_DEFINE_MATH_FP_FUNCS(VT, BITS, IT)                         \
+    MATH_NORMALIZE_FUNC(VT)                                             \
+    MATH_RCP_FUNC(VT)                                                   \
+    MATH_SQRT_FUNC(VT)                                                  \
     MATH_RSQRT_FUNC                                                     \
-    MATH_LERP_FUNC(BITS, IT)
+    MATH_LERP_FUNC(VT, BITS, IT)
 
-#define YAVL_DEFINE_MATH_FUNCS(BITS, IT1, IT2)                          \
-    YAVL_DEFINE_MATH_COMMON_FUNCS(BITS, IT1, IT2)                       \
-    YAVL_DEFINE_MATH_FP_FUNCS(BITS, IT1)
+#define YAVL_DEFINE_MATH_FUNCS(VT, BITS, IT1, IT2)                      \
+    YAVL_DEFINE_MATH_COMMON_FUNCS(VT, BITS, IT1, IT2)                   \
+    YAVL_DEFINE_MATH_FP_FUNCS(VT, BITS, IT1)
 
-    YAVL_DEFINE_MATH_FUNCS(, ,)
+#define YAVL_DEFINE_BASIC_VEC(VT)                                       \
+template <typename T, uint32_t N, typename = int>                       \
+struct VT {                                                             \
+    YAVL_TYPE_ALIAS(T, N, N)                                            \
+    YAVL_VEC_OPTIONAL_ALIAS(Scalar, N)                                  \
+    static constexpr bool vectorized = false;                           \
+    union {                                                             \
+        struct {                                                        \
+            Scalar x;                                                   \
+            Scalar y;                                                   \
+            [[no_unique_address]] Z z;                                  \
+            [[no_unique_address]] W w;                                  \
+        };                                                              \
+        struct {                                                        \
+            Scalar r;                                                   \
+            Scalar g;                                                   \
+            [[no_unique_address]] B b;                                  \
+            [[no_unique_address]] A a;                                  \
+        };                                                              \
+        std::array<Scalar, Size> arr;                                   \
+    };                                                                  \
+    /* Ctors */                                                         \
+    constexpr VT() {                                                    \
+        arr.fill(static_cast<Scalar>(0));                               \
+    }                                                                   \
+    template <typename ...Ts>                                           \
+    constexpr VT(Ts... args) {                                          \
+        static_assert(sizeof...(args) == 1 || sizeof...(args) == Size); \
+        if constexpr (sizeof...(args) == 1)                             \
+            arr.fill( static_cast<Scalar>(args)... );                   \
+        else                                                            \
+            arr = { static_cast<Scalar>(args)... };                     \
+    }                                                                   \
+    VT(const VT&) = default;                                            \
+    VT(VT&&) = default;                                                 \
+    /* Operators */                                                     \
+    YAVL_DEFINE_VEC_FP_OP(VT, , ,)                                      \
+    /* Misc */                                                          \
+    template <int ...Is>                                                \
+    inline VT shuffle() const {                                         \
+        static_assert(sizeof...(Is) == Size);                           \
+        std::array<int, sizeof...(Is)> indice{ Is... };                 \
+        VT tmp;                                                         \
+        static_for<Size>([&](const auto i) {                            \
+            tmp.arr[i] = arr[indice[i]];                                \
+        });                                                             \
+        return tmp;                                                     \
+    }                                                                   \
+    YAVL_DEFINE_MISC_FUNCS(VT)                                          \
+    /* Geometry */                                                      \
+    inline auto cross(const VT& b) const {                              \
+        static_assert(VT::Size > 1 && VT::Size < 4);                    \
+        if constexpr (VT::Size == 2) {                                  \
+            return x * b.y - y * b.x;                                   \
+        }                                                               \
+        else {                                                          \
+            return Vec(y * b.z - z * b.y, z * b.x - x * b.z,            \
+                x * b.y - y * b.x);                                     \
+        }                                                               \
+    }                                                                   \
+    YAVL_DEFINE_GEO_FUNCS(VT)                                           \
+    /* Math */                                                          \
+    YAVL_DEFINE_MATH_FUNCS(VT, , ,)                                     \
+};
 
+YAVL_DEFINE_BASIC_VEC(Vec)
+YAVL_DEFINE_BASIC_VEC(_Vec)
+
+#undef COPY_ASSIGN_EXPRS
+#undef OP_VEC_EXPRS
+#undef OP_VEC_ASSIGN_EXPRS
+#undef OP_SCALAR_EXPRS
+#undef OP_SCALAR_ASSIGN_EXPRS
+#undef OP_FRIEND_SCALAR_EXPRS
+#undef GEO_DOT_EXPRS
 #undef MATH_LENGTH_SQUARED_EXPRS
 #undef MATH_LENGTH_EXPRS
 #undef MATH_NORMALIZE_EXPRS
@@ -351,7 +344,6 @@ struct Vec {
 #undef MATH_RSQRT_EXPRS
 #undef MATH_LERP_SCALAR_EXPRS
 #undef MATH_LERP_VEC_EXPRS
-};
 
 // Vec type aliasing
 template <typename T>
@@ -378,7 +370,15 @@ using Vec4d = Vec4<double>;
 using Vec4i = Vec4<int>;
 using Vec4u = Vec4<uint32_t>;
 
-/*
+template <typename T>
+using _Vec2 = _Vec<T, 2>;
+
+template <typename T>
+using _Vec3 = _Vec<T, 3>;
+
+template <typename T>
+using _Vec4 = _Vec<T, 4>;
+
 using _Vec2f = _Vec2<float>;
 using _Vec2d = _Vec2<double>;
 using _Vec2i = _Vec2<int>;
@@ -393,6 +393,5 @@ using _Vec4f = _Vec4<float>;
 using _Vec4d = _Vec4<double>;
 using _Vec4i = _Vec4<int>;
 using _Vec4u = _Vec4<uint32_t>;
-*/
 
 }

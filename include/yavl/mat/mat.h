@@ -101,7 +101,7 @@ struct Col {
         return *this;                                                   \
     }
 
-    #define OP_SCALAR_EXPRS(BITS, OP, NAME, IT)                         \
+    #define OP_SCALAR_EXPRS(BITS, OP, AT, NAME, IT)                     \
     {                                                                   \
         Vec<Scalar, Size> tmp;                                          \
         static_for<Size>([&](const auto i) {                            \
@@ -110,7 +110,7 @@ struct Col {
         return tmp;                                                     \
     }
 
-    #define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, NAME, IT)                  \
+    #define OP_SCALAR_ASSIGN_EXPRS(BITS, OP, AT, NAME, IT)              \
     {                                                                   \
         static_for<Size>([&](const auto i) {                            \
             arr[i] OP##= v;                                             \

@@ -86,17 +86,17 @@ static inline __m256d rsqrt_pd_impl(const __m256d m) {
     #endif
 }
 
-#define MATH_ABS_EXPRS(BITS, IT1, IT2)                                  \
+#define MATH_ABS_EXPRS(VT, BITS, IT1, IT2)                              \
     {                                                                   \
         return Vec(_mm##BITS##_andnot_##IT1(_mm##BITS##_set1_##IT2(-0.), m)); \
     }
 
-#define MATH_RCP_EXPRS                                                  \
+#define MATH_RCP_EXPRS(VT)                                              \
     {                                                                   \
         return Vec(rcp_pd_impl<Size>(m));                               \
     }
 
-#define MATH_SQRT_EXPRS                                                 \
+#define MATH_SQRT_EXPRS(VT)                                             \
     {                                                                   \
         return Vec(_mm256_sqrt_pd(m));                                  \
     }
@@ -119,7 +119,7 @@ struct alignas(32) Vec<double, 4> {
     YAVL_VECTORIZED_CTOR(256, pd, __m256d)
 
     // Operators
-    YAVL_DEFINE_VEC_FP_OP(256, pd, pd)
+    YAVL_DEFINE_VEC_FP_OP(Vec, 256, pd, pd)
 
     // Misc funcs
     template <int I0, int I1, int I2, int I3>
@@ -127,7 +127,7 @@ struct alignas(32) Vec<double, 4> {
         return Vec(_mm256_permute4x64_pd(m, _MM_SHUFFLE(I3, I2, I1, I0)));
     }
 
-    YAVL_DEFINE_MISC_FUNCS
+    YAVL_DEFINE_MISC_FUNCS(Vec)
 
     // Geo funcs
     #define GEO_DOT_EXPRS                                               \
@@ -135,7 +135,7 @@ struct alignas(32) Vec<double, 4> {
         return operator *(b).sum();                                     \
     }
 
-    YAVL_DEFINE_GEO_FUNCS
+    YAVL_DEFINE_GEO_FUNCS(Vec)
 
     #undef GEO_DOT_EXPRS
 
@@ -148,7 +148,7 @@ struct alignas(32) Vec<double, 4> {
         return _mm256_cvtsd_f64(t3);                                    \
     }
 
-    YAVL_DEFINE_MATH_FUNCS(256, pd, pd)
+    YAVL_DEFINE_MATH_FUNCS(Vec, 256, pd, pd)
 
     #undef MATH_SUM_EXPRS
 };
@@ -166,7 +166,7 @@ struct alignas(32) Vec<double, 3> {
     YAVL_VECTORIZED_CTOR(256, pd, __m256d)
 
     // Operators
-    YAVL_DEFINE_VEC_FP_OP(256, pd, pd)
+    YAVL_DEFINE_VEC_FP_OP(Vec, 256, pd, pd)
 
     // Misc funcs
     template <int I0, int I1, int I2>
@@ -174,7 +174,7 @@ struct alignas(32) Vec<double, 3> {
         return Vec(_mm256_permute4x64_pd(m, _MM_SHUFFLE(0, I2, I1, I0)));
     }
 
-    YAVL_DEFINE_MISC_FUNCS
+    YAVL_DEFINE_MISC_FUNCS(Vec)
 
     // Geo funcs
     #define GEO_DOT_EXPRS                                               \
@@ -182,7 +182,7 @@ struct alignas(32) Vec<double, 3> {
         return operator *(b).sum();                                     \
     }
 
-    YAVL_DEFINE_GEO_FUNCS
+    YAVL_DEFINE_GEO_FUNCS(Vec)
 
     #undef GEO_DOT_EXPRS
 
@@ -194,7 +194,7 @@ struct alignas(32) Vec<double, 3> {
         return x + y + z;                                               \
     }
 
-    YAVL_DEFINE_MATH_FUNCS(256, pd, pd)
+    YAVL_DEFINE_MATH_FUNCS(Vec, 256, pd, pd)
 
     #undef MATH_SUM_EXPRS
 };
