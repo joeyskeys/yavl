@@ -358,6 +358,8 @@ static inline yavl::Vec<T, N> avx_mat_mul_vec_impl(const yavl::Mat<T, N>& mat,
 
 } // namespace detail
 
+#if defined(YAVL_X86_SSE42) || defined(YAVL_X86_AVX) || defined(YAVL_X86_AVX512ER)
+
 namespace yavl
 {
 
@@ -446,6 +448,8 @@ struct Col<double, 3> {
 };
 
 } // namespace yavl
+
+#endif
 
 // Include possible common impl
 #if defined(YAVL_X86_SSE42)
