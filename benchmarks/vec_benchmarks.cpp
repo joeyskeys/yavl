@@ -1,24 +1,25 @@
-#include <cstdio>
+#include <benchmark/benchmark.h>
 
 #include <yavl/yavl.h>
 
-#include "utils.h"
-
 using namespace yavl;
 
-int main() {
-    Vec4f a{1};
-    Vec4f b{2};
-    auto st = rdtsc();
-    auto c = a * b;
-    auto dur = static_cast<double>(rdtsc() - st);
-    printf("ret: %f, cc: %.2f\n", c[0], dur);
-
-    _Vec4f d{1};
-    _Vec4f e{2};
-    st = rdtsc();
-    auto f = d * e;
-    dur = static_cast<double>(rdtsc() - st);
-    printf("ret: %f, cc: %.2f\n", c[0], dur);
-    return 0;
+static void BM_Vec4fAddition(benchmark::State& state) {
+    Vec4f a{1}, b{2}, c;
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(c = a + b);
+    }
 }
+
+BENCHMARK(BM_Vec4fAddition);
+
+static void BM_Vec4fSubtraction(benchmark::State& state) {
+    Vec4f a{2}, b{1}, c;
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(c = a - b);
+    }
+}
+
+BENCHMARK(BM_Vec4fSubtraction);
+
+BENCHMARK_MAIN();

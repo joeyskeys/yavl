@@ -358,6 +358,7 @@ static inline yavl::Vec<T, N> avx_mat_mul_vec_impl(const yavl::Mat<T, N>& mat,
 
 } // namespace detail
 
+#if !defined(YAVL_DISABLE_VECTORIZATION)
 #if defined(YAVL_X86_SSE42) || defined(YAVL_X86_AVX) || defined(YAVL_X86_AVX512ER)
 
 namespace yavl
@@ -473,6 +474,7 @@ struct Col<double, 3> {
 #elif defined(YAVL_X86_SSE42)
     #include <yavl/mat/mat_sse42.h>
 #endif
+#endif // YAVL_DISABLE_VECTORIZATION
 
 #undef MAT_MUL_SCAlAR_EXPRS
 #undef MAT_MUL_ASSIGN_SCALAR_EXPRS

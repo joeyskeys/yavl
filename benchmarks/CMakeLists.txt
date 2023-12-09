@@ -1,1 +1,2 @@
 add_executable(vec_benchmarks vec_benchmarks.cpp)
+target_link_libraries(vec_benchmarks benchmark::benchmark)

@@ -323,7 +323,7 @@ struct VT {                                                             \
 };
 
 YAVL_DEFINE_BASIC_VEC(Vec)
-YAVL_DEFINE_BASIC_VEC(_Vec)
+//YAVL_DEFINE_BASIC_VEC(_Vec)
 
 #undef COPY_ASSIGN_EXPRS
 #undef OP_VEC_EXPRS
@@ -370,6 +370,12 @@ using Vec4d = Vec4<double>;
 using Vec4i = Vec4<int>;
 using Vec4u = Vec4<uint32_t>;
 
+// A design problem:
+// We still have a fallback implementation and the normal situation
+// is that we'll need vectorization.
+// Benchmark for comparison can be done in two pass, no need to provide
+// the _xxx classes which only bring a lot code design challenges.
+/*
 template <typename T>
 using _Vec2 = _Vec<T, 2>;
 
@@ -393,5 +399,6 @@ using _Vec4f = _Vec4<float>;
 using _Vec4d = _Vec4<double>;
 using _Vec4i = _Vec4<int>;
 using _Vec4u = _Vec4<uint32_t>;
+*/
 
 }
