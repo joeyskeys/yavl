@@ -261,6 +261,7 @@ struct Mat {
         return *this;                                                   \
     }
 
+    /*
     #define MAT_MUL_VEC_EXPRS                                           \
     {                                                                   \
         Vec<Scalar, Size> tmp;                                          \
@@ -269,6 +270,18 @@ struct Mat {
                 tmp[i] += arr[j * Size + i] * v[j];                     \
             });                                                         \
         });                                                             \
+        return tmp;                                                     \
+    }
+    */
+
+    #define MAT_MUL_VEC_EXPRS                                           \
+    {                                                                   \
+        Vec<Scalar, Size> tmp;                                          \
+        for(int i = 0; i < Size; ++i) {                                 \
+            for(int j = 0; j < Size; ++j) {                             \
+                tmp[i] += arr[j * Size + i] * v[j];                     \
+            }                                                           \
+        }                                                               \
         return tmp;                                                     \
     }
 

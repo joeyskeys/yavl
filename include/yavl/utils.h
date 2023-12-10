@@ -230,4 +230,13 @@ struct empty_t {};
 template <typename T>
 constexpr T epsilon = static_cast<T>(1e-6f);
 
+// Functions
+void escape(void *p) {
+    asm volatile("" : : "g"(p) : "memory");
+}
+
+void clobber() {
+    asm volatile("" : : : "memory");
+}
+
 }

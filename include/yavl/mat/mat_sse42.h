@@ -5,15 +5,15 @@ namespace yavl
 
 #define MAT_MUL_VEC_EXPRS                                               \
 {                                                                       \
-    return sse42_mat_mul_vec_impl(*this, v);                            \
+    return detail::sse42_mat_mul_vec_impl(*this, v);                    \
 }
 
 #define MAT_MUL_COL_EXPRS                                               \
 {                                                                       \
     if constexpr (Size == 2)                                            \
-        return sse42_mat_mul_vec_impl(*this, Vec<Scalar, Size>{v[0], v[1]}); \
+        return detail::sse42_mat_mul_vec_impl(*this, Vec<Scalar, Size>{v[0], v[1]}); \
     else                                                                \
-        return sse42_mat_mul_vec_impl(*this, Vec<Scalar, Size>(v.m));   \
+        return detail::sse42_mat_mul_vec_impl(*this, Vec<Scalar, Size>(v.m)); \
 }
 
 #define MAT_MUL_MAT_EXPRS                                               \
@@ -104,7 +104,7 @@ struct alignas(16) Mat<float, 3> {
 
 template <typename I>
 struct alignas(16) Mat<I, 4, enable_if_int32_t<I>> {
-    YAVL_MAT_ALIAS_VECTORIZED(I, 4, 4)
+    YAVL_MAT_ALIAS_VECTORIZED(I, 4, 4, 4)
 
     YAVL_DEFINE_MAT_UNION(__m128i)
 
@@ -133,7 +133,7 @@ struct alignas(16) Mat<I, 4, enable_if_int32_t<I>> {
 
 template <typename I>
 struct alignas(16) Mat<I, 3, enable_if_int32_t<I>> {
-    YAVL_MAT_ALIAS_VECTORIZED(I, 4, 3)
+    YAVL_MAT_ALIAS_VECTORIZED(I, 3, 4, 3)
 
     YAVL_DEFINE_MAT_UNION(__m128i)
 

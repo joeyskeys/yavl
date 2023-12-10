@@ -160,7 +160,6 @@ inline Vec shuffle_impl(const Vec& v, Ts ...args) {
         return Vec(ret);                                                \
     }
 
-#if !defined(YAVL_DISABLE_VECTORIZATION)
 #if defined(YAVL_X86_SSE42)
     #include <yavl/vec/vec_sse42.h>
 #endif
@@ -171,7 +170,6 @@ inline Vec shuffle_impl(const Vec& v, Ts ...args) {
 
 #if defined(YAVL_X86_AVX2)
     #include <yavl/vec/vec_avx2.h>
-#endif
 #endif
 
 #undef COPY_ASSIGN_EXPRS

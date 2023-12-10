@@ -4,7 +4,11 @@
 #include <yavl/utils.h>
 
 #include <yavl/vec/vec.h>
-#include <yavl/vec/vec_simd.h>
+#if !defined(YAVL_DISABLE_VECTORIZATION)
+    #include <yavl/vec/vec_simd.h>
+#endif
 
 #include <yavl/mat/mat.h>
-#include <yavl/mat/mat_simd.h>
+#if !defined(YAVL_DISABLE_VECTORIZATION)
+    #include <yavl/mat/mat_simd.h>
+#endif
