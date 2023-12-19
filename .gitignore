@@ -36,3 +36,6 @@ build/
 
 # VSCode related
 .vscode
+
+# Json files
+*.json

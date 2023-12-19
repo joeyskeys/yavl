@@ -1,6 +1,5 @@
 #include <benchmark/benchmark.h>
 
-#define YAVL_DISABLE_VECTORIZATION
 #include <yavl/yavl.h>
 
 using namespace yavl;
@@ -49,5 +48,14 @@ static void BM_Vec4fSqrt(benchmark::State& state) {
 }
 
 BENCHMARK(BM_Vec4fSqrt);
+
+static void BM_Vec4fRsqrt(benchmark::State& state) {
+    Vec4f a{2}, c;
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(c = a.rsqrt());
+    }
+}
+
+BENCHMARK(BM_Vec4fRsqrt);
 
 BENCHMARK_MAIN();
