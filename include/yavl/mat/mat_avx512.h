@@ -4,7 +4,7 @@ namespace yavl
 {
 
 template <>
-struct Col<float, 4> {
+struct alignas(16) Col<float, 4> {
     YAVL_TYPE_ALIAS(T, N, N)
 
     Scalar* arr;

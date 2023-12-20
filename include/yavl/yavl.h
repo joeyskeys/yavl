@@ -12,3 +12,5 @@
 #if !defined(YAVL_DISABLE_VECTORIZATION)
     #include <yavl/mat/mat_simd.h>
 #endif
+
+#include <yavl/rng/pcg.h>
