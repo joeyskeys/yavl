@@ -225,6 +225,7 @@ struct alignas(64) pcg32x<8> {
     __m512i state;
     __m512i inc;
 
+    // Ctors
     pcg32x() {
         std::array<uint64_t, 8> initstate{ PCG32_DEFAULT_STATE };
         std::array<uint64_t, 8> initseq{ 1, 2, 3, 4, 5, 6, 7, 8 };
@@ -236,6 +237,7 @@ struct alignas(64) pcg32x<8> {
         seed(initstate, initseq);
     }
 
+    // Seed the pseudorandom number generator
     void seed(const std::array<uint64_t, 8>& initstate, const std::array<uint64_t, 8>& initseq) {
         const __m512i one = _mm512_set1_epi64(1);
 
@@ -249,6 +251,7 @@ struct alignas(64) pcg32x<8> {
         step();
     }
 
+    // Generate 8 uniformly distributed unsigned 32-bit random numbers
     void next_uints(std::array<uint32_t, 8>& result) {
         _mm256_store_si256((__m256i*) result.data(), step());
     }
@@ -257,6 +260,7 @@ struct alignas(64) pcg32x<8> {
         return step();
     }
 
+    // Generate 8 single precision floating point value on the interval [0, 1)
     __m256 next_floats() {
         const __m256i const1 = _mm256_set1_epi32((int) 0x3f800000u);
 
@@ -271,6 +275,7 @@ struct alignas(64) pcg32x<8> {
         _mm256_store_ps(result.data(), next_floats());
     }
 
+    // Generate 8 double precision floating point value on the interval [0, 1)
     __m512d next_doubles() {
         const __m512i const1 =
             _mm512_set1_epi64(0x3ff0000000000000ull);
@@ -551,6 +556,7 @@ strcut alignas(16) pcg32x<8> {
     __m128i state[4];
     __m128i inc[4];
 
+    // Ctors
     pcg32x() {
         std::array<uint64_t, 8> initstate{ PCG32_DEFAULT_STATE };
         std::array<uint64_t, 8> initseq{ 1, 2, 3, 4, 5, 6, 7, 8 };
@@ -562,6 +568,7 @@ strcut alignas(16) pcg32x<8> {
         seed(initstate, initseq);
     }
 
+    // Seed the pseudorandom number generator
     void seed(const std::array<uint64_t, 8>& initstate, const std::array<uint64_t, 8>& initseq) {
         const __m128i one = _mm_set1_epi64x((long long) 1);
 
@@ -579,6 +586,7 @@ strcut alignas(16) pcg32x<8> {
         step();
     }
 
+    // Generate 8 uniformly distributed unsigned 32-bit random numbers
     void next_uints(std::array<uint32_t, 8>& result) {
         auto [hi, lo] = step();
         _mm_store_si128((__m128i*) &result[0]);
@@ -589,6 +597,7 @@ strcut alignas(16) pcg32x<8> {
         return step();
     }
 
+    // Generate 8 single precision floating point value on the interval [0, 1)
     std::pair<__m128, __m128> next_floats() {
         const __m128i const1 = _mm_set1_epi32((int) 0x3f800000u);
 
@@ -606,8 +615,26 @@ strcut alignas(16) pcg32x<8> {
         _mm_store_ps(&result[4], hi);
     }
 
+    // Generate 8 double precision floating point value on the interval [0, 1)
     std::array<__m128d, 4> next_doubles() {
+        const __m128i const1 =
+            _mm_set1_epi64x((long long) 0x3ff0000000000000ull);
 
+        auto [vhi, vlo] = step();
+
+        __m128i lo0 = _mm_cvtepu32_epi64(vlo);
+        __m128i lo1 = _mm_cvtepu32_epi64(_mm_shuffle_epi32(vlo, 0b01001110));
+        __m128i hi0 = _mm_cvtepi32_epi64(vhi);
+        __m128i hi1 = _mm_cvtepu32_epi64(_mm_shuffle_epi32(vhi, 0b01001110));
+        __m128i tlo0 = _mm_or_si128(_mm_slli_epi64(lo0, 20), const1);
+        __m128i tlo0 = _mm_or_si128(_mm_slli_epi64(lo1, 20), const1);
+        __m128i thi0 = _mm_or_si128(_mm_slli_epi64(hi0, 20), const1);
+        __m128i thi1 = _mm_or_si128(_mm_slli_epi64(hi1, 20), const1);
+        __m128d flo0 = _mm_sub_pd(_mm_castsi128_pd(tlo0));
+        __m128d flo1 = _mm_sub_pd(_mm_castsi128_pd(tlo1));
+        __m128d fhi0 = _mm_sub_pd(_mm_castsi128_pd(thi0));
+        __m128d fhi1 = _mm_sub_pd(_mm_castsi128_pd(thi1));
+        return { fhi1, fhi0, flo1, flo0 };
     }
 
     void next_doubles(std::array<double, 8>& result) {
@@ -620,7 +647,116 @@ strcut alignas(16) pcg32x<8> {
 
 private:
     inline std::pair<__m128i, __m128i> step() {
-        
+        const __m128i pcg32_mult_l  = _mm_set1_epi64x((long long) (PCG32_MULT & 0xffffffffu));
+        const __m128i pcg32_mult_h  = _mm_set1_epi64x((long long) (PCG32_MULT >> 32));
+        const __m128i mask_l        = _mm_set1_epi64x((long long) 0x00000000ffffffffull);
+        const __m128i const32       = _mm_set1_epi32(32);
+
+        __m128i s0 = state[0], s1 = state[1], s2 = state[2], s3 = state[3];
+
+        // Extract low and high words for partial products
+        __m128i s0_l = _mm_and_si128(s0, mask_l);
+        __m128i s0_h = _mm_srli_epi64(s0, 32);
+        __m128i s1_l = _mm_and_si128(s1, mask_l);
+        __m128i s1_h = _mm_srli_epi64(s1, 32);
+        __m128i s2_l = _mm_and_si128(s2, mask_l);
+        __m128i s2_h = _mm_srli_epi64(s2, 32);
+        __m128i s3_l = _mm_and_si128(s3, mask_l);
+        __m128i s3_h = _mm_srli_epi64(s3, 32);
+
+        // Improve high bits using xorshift step
+        __m128i s0s = _mm_srli_epi64(s0, 18);
+        __m128i s1s = _mm_srli_epi64(s1, 18);
+        __m128i s2s = _mm_srli_epi64(s2, 18);
+        __m128i s3s = _mm_srli_epi64(s3, 18);
+
+        __m128i s0x = _mm_xor_si128(s0s, s0);
+        __m128i s1x = _mm_xor_si128(s1s, s1);
+        __m128i s2x = _mm_xor_si128(s2s, s2);
+        __m128i s3x = _mm_xor_si128(s3s, s3);
+
+        __m128i s0xs = _mm_srli_epi64(s0x, 27);
+        __m128i s1xs = _mm_srli_epi64(s1x, 27);
+        __m128i s2xs = _mm_srli_epi64(s2x, 27);
+        __m128i s3xs = _mm_srli_epi64(s3x, 27);
+
+        __m128i xors0 = _mm_and_si128(mask_l, s0xs);
+        __m128i xors1 = _mm_and_si128(mask_l, s1xs);
+        __m128i xors2 = _mm_and_si128(mask_l, s2xs);
+        __m128i xors3 = _mm_and_si128(mask_l, s3xs);
+
+        // Use high bits to choose a bit-level rotation
+        __m128i rot0 = _mm_srli_epi64(s0, 59);
+        __m128i rot1 = _mm_srli_epi64(s1, 59);
+        __m128i rot2 = _mm_srli_epi64(s2, 59);
+        __m128i rot3 = _mm_srli_epi64(s3, 59);
+
+        // 64 bit multiplication using 32 bit partial products
+        __m128i m0_hl = _mm_mul_epi32(s0_h, pcg32_mult_l);
+        __m128i m1_hl = _mm_mul_epi32(s1_h, pcg32_mult_l);
+        __m128i m2_hl = _mm_mul_epi32(s2_h, pcg32_mult_l);
+        __m128i m3_hl = _mm_mul_epi32(s3_h, pcg32_mult_l);
+        __m128i m0_hl = _mm_mul_epi32(s0_l, pcg32_mult_h);
+        __m128i m1_hl = _mm_mul_epi32(s1_l, pcg32_mult_h);
+        __m128i m2_hl = _mm_mul_epi32(s2_l, pcg32_mult_h);
+        __m128i m3_hl = _mm_mul_epi32(s3_l, pcg32_mult_h);
+
+        // Assemble lower 32 bits, will be merged into one 256 bit vector
+        __m128i x6240l = _mm_unpacklo_epi32(xors0, xors1);
+        xors0 = _mm_shuffle_epi32(x6240l, 0b11011000);
+        xors1 = _mm_shuffle_epi32(xors1, 0b11111111);
+        __m128i r6240l = _mm_unpacklo_epi32(rot0, rot1);
+        rot0 = _mm_shuffle_epi32(r6240l, 0b11011000);
+        rot1 = _mm_shuffle_epi32(rot1, 0b11111111);
+        __m128i x6240h = _mm_unpack_epi32(xors2, xors3);
+        xors2 = _mm_shuffle_epi32(xors3, 0b11111111);
+        xors3 = _mm_shuffle_epi32(x6240h, 0b11011000);
+        __m128i r6240h = _mm_unpacklo_epi32(rot2, rot3);
+        rot2 = _mm_shuffle_epi32(rot3, 0b11111111);
+        rot3 = _mm_shuffle_epi32(r6240h, 0b11011000);
+
+        // Continue with partial products
+        __m128i m0_ll = _mm_mul_epu32(s0_l, pcg32_mult_l);
+        __m128i m1_ll = _mm_mul_epu32(s1_l, pcg32_mult_l);
+        __m128i m2_ll = _mm_mul_epu32(s2_l, pcg32_mult_l);
+        __m128i m3_ll = _mm_mul_epu32(s3_l, pcg32_mult_l);
+
+        __m128i m0h = _mm_add_epi64(m0_hl, m0_lh);
+        __m128i m1h = _mm_add_epi64(m1_hl, m1_lh);
+        __m128i m2h = _mm_add_epi64(m2_hl, m2_lh);
+        __m128i m3h = _mm_add_epi64(m3_hl, m3_lh);
+
+        __m128i m0hs = _mm_slli_epi64(m0h, 32);
+        __m128i m1hs = _mm_slli_epi64(m1h, 32);
+        __m128i m2hs = _mm_slli_epi64(m2h, 32);
+        __m128i m3hs = _mm_slli_epi64(m3h, 32);
+
+        __m128i s0n = _mm256_add_epi64(m0hs, m0_ll);
+        __m128i s1n = _mm256_add_epi64(m1hs, m1_ll);
+        __m128i s2n = _mm256_add_epi64(m2hs, m2_ll);
+        __m128i s3n = _mm256_add_epi64(m3hs, m3_ll);
+
+        __m128i xorsl = _mm_or_si128(xors0, xors2);
+        __m128i xorsh = _mm_or_si128(xors1, xors3);
+        __m128i rotl = _mm_or_si128(rot0, rot2);
+        __m128i roth = _mm_or_si128(rot1, rot3);
+
+        state[0] = _mm_add_epi64(s0n, inc[0]);
+        state[1] = _mm_add_epi64(s1n, inc[1]);
+        state[2] = _mm_add_epi64(s2n, inc[2]);
+        state[3] = _mm_add_epi64(s3n, inc[3]);
+
+        // Rotate and return
+        __m128i retl = _mm_or_si128(
+            _mm_srlv_epi32(xorsl, rotl),
+            _mm_sllv_epi32(xorsl, _mm_sub_epi32(const32, rotl))
+        );
+        __m128i reth = _mm_or_si128(
+            _mm_srlv_epi32(xorsh, roth),
+            _mm_sllv_epi32(xorsh, _mm_sub_epi32(const32, roth))
+        );
+
+        return std::make_pair(reth, retl);
     }
 };
 
