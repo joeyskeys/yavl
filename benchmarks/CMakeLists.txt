@@ -9,3 +9,9 @@ target_link_libraries(mat_vectorized benchmark::benchmark)
 
 add_executable(mat_unvectorized mat_unvectorized.cpp)
 target_link_libraries(mat_unvectorized benchmark::benchmark)
+
+add_executable(rng_vectorized rng_vectorized.cpp)
+target_link_libraries(rng_vectorized benchmark::benchmark)
+
+add_executable(rng_unvectorized rng_unvectorized.cpp)
+target_link_libraries(rng_unvectorized benchmark::benchmark)

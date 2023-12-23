@@ -181,7 +181,7 @@ inline void apply_by8(const uint32_t i, const F& f, T0&& t0, T1&& t1, T2&& t2,
 // https://gist.github.com/jjsullivan5196/a83f99263cda755edc257f9c50b53470
 template <typename T, T Start, T End, T Step = 1, T... Ints>
 struct integer_range : std::conditional<
-    std::integral_constant_v<bool, Start >= End>,
+    std::integral_constant<bool, Start >= End>::value,
     std::integer_sequence<T, Ints..., End>,
     integer_range<T, Start + Step, End, Step, Ints..., Start>
 >::type {};
@@ -189,8 +189,13 @@ struct integer_range : std::conditional<
 template <typename T, T Start, T End, T Step = 1>
 constexpr auto integer_range_v = integer_range<T, Start, End, Step>();
 
+template <typename T, T Size, T... Seq>
+constexpr auto array_from_integer_range(std::integer_sequence<T, Seq...>) {
+    return std::array<T, Size> { Seq... };
+}
+
 template <typename T, T Start, T End, T Step = 1, T Size = (((End - Start) / Step) + 1)>
-constexpr auto integer_range_array = std::array<T, Size>(integer_range_v<T, Start, End, Step>);
+constexpr auto integer_range_array = array_from_integer_range<T, Size>(integer_range_v<T, Start, End, Step>);
 
 // Traits
 template <typename T>

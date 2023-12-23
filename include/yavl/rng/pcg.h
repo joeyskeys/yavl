@@ -147,7 +147,7 @@ struct pcg32 {
      */
     template <typename Iterator> void shuffle(Iterator begin, Iterator end) {
         for (Iterator it = end - 1; it > begin; --it)
-            std::iter_swap(it, begin + nextUInt((uint32_t) (it - begin + 1)));
+            std::iter_swap(it, begin + next_uint((uint32_t) (it - begin + 1)));
     }
 
     /// Compute the distance between two PCG32 pseudorandom number generators
@@ -188,7 +188,7 @@ struct pcg32x {
 
     pcg32x() {
         std::array<uint64_t, N> initstate{ PCG32_DEFAULT_STATE };
-        std::array<uint64_t, N> initseq{ integer_range_v<uint64_t, 1, N + 1> };
+        std::array<uint64_t, N> initseq = integer_range_array<uint64_t, 1, N>;
 
         seed(initstate, initseq);
     }
@@ -217,6 +217,18 @@ struct pcg32x {
             result[i] = rng[i].next_double();
     }
 };
+
+#if !defined(YAVL_DISABLE_VECTORIZATION)
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#elif defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wignored-attributes"
+#elif defined(_MSC_VER)
+// Do nothing here for now
+#endif
 
 #if defined(YAVL_X86_AVX512VL)
 
@@ -357,7 +369,7 @@ struct alignas(32) pcg32x<8> {
     __m256i inc[2];
 
     // Initialize the pseudorandom number generator with default seed
-    pcg32_8() {
+    pcg32x() {
         std::array<uint64_t, 8> initstate = {
             PCG32_DEFAULT_STATE, PCG32_DEFAULT_STATE,
             PCG32_DEFAULT_STATE, PCG32_DEFAULT_STATE,
@@ -372,7 +384,7 @@ struct alignas(32) pcg32x<8> {
     }
 
     // Initialize the pseudorandom number generator with the \ref seed() function
-    pcg32_8(const std::array<uint64_t, 8>& initstate, const std::array<uint64_t, 8>& initseq) {
+    pcg32x(const std::array<uint64_t, 8>& initstate, const std::array<uint64_t, 8>& initseq) {
         seed(initstate, initseq);
     }
 
@@ -759,6 +771,10 @@ private:
         return std::make_pair(reth, retl);
     }
 };
+
+#endif
+
+#pragma GCC diagnostic pop
 
 #endif
 
