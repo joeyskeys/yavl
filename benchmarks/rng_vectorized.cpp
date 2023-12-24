@@ -8,8 +8,10 @@ static void BM_Pcg32Generate8(benchmark::State& state) {
     pcg32x<8> rng;
     std::array<float, 8> result;
     for (auto _ : state) {
-        rng.next_floats(result);
-        benchmark::DoNotOptimize(result);
+        static_for<1000>([&](const auto i) {
+            rng.next_floats(result);
+            benchmark::DoNotOptimize(result);
+        });
     }
 }
 

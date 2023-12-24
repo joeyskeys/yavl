@@ -5,17 +5,16 @@
 
 using namespace yavl;
 
-static void BM_Pcg32Generate8(benchmark::State& state) {
-    pcg32x<8> rng;
-    std::array<float, 8> result;
+static void BM_Mat3fMulMat(benchmark::State& state) {
+    Mat3f a{1}, b{2}, c;
     for (auto _ : state) {
         static_for<1000>([&](const auto i) {
-            rng.next_floats(result);
-            benchmark::DoNotOptimize(result);
+            c = a * b;
+            benchmark::DoNotOptimize(c);
         });
     }
 }
 
-BENCHMARK(BM_Pcg32Generate8);
+BENCHMARK(BM_Mat3fMulMat);
 
 BENCHMARK_MAIN();
