@@ -10,7 +10,11 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInf
 
 set(CMAKE_CXX_FLAGS "-march=native" ${CMAKE_CXX_FLAGS})
 
-include_directories(include)
+add_library(yavl INTERFACE)
+target_include_directories(yavl
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>)
 
 find_package(Catch2)
 if (Catch2_FOUND)
@@ -21,3 +25,17 @@ find_package(benchmark)
 if (benchmark_FOUND)
     add_subdirectory(benchmarks)
 endif()
+
+set(YAVL_VERSION "0.1")
+
+include(CMakePackageConfigHelpers)
+install(DIRECTORY include/ DESTINATION include)
+install(TARGETS yavl EXPORT yavl-targets)
+install(EXPORT yavl-targets
+    FILE yavl-config.cmake
+    DESTINATION cmake/)
+
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/yavl-config-version.cmake"
+    COMPATIBILITY SameMajorVersion
+    VERSION "${YAVL_VERSION}")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/yavl-config-version.cmake" DESTINATION cmake/)
