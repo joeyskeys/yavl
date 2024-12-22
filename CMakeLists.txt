@@ -16,6 +16,8 @@ target_include_directories(yavl
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
 
+include_directories(include)
+
 find_package(Catch2)
 if (Catch2_FOUND)
     add_subdirectory(tests)

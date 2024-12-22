@@ -196,6 +196,16 @@ static inline __m128d rsqrt_pd_impl(const __m128d m) {
         return Vec(rsqrt_ps_impl(m));                                   \
     }
 
+#define MATH_ALL_EXPRS                                                  \
+    {                                                                   \
+        return _mm_movemask_ps(m) == 0xF;                               \
+    }
+
+#define MATH_ANY_EXPRS                                                  \
+    {                                                                   \
+        return _mm_movemask_ps(m) != 0x0;                               \
+    }
+
 template <>
 struct alignas(16) Vec<float, 4> {
     YAVL_VEC_ALIAS_VECTORIZED(float, 4, 4)
@@ -244,6 +254,21 @@ struct alignas(16) Vec<float, 4> {
     YAVL_DEFINE_MATH_FUNCS(Vec,, ps, ps)
 
 #undef MATH_SUM_EXPRS
+
+    // Compare ops
+    bool operator ==(const Vec& b) const {
+        auto abs_diff = (*this - b).abs();
+        auto epsilon_vec = Vec(epsilon<Scalar>);
+        auto ret = Vec(_mm_cmple_ps(abs_diff.m, epsilon_vec.m));
+        return ret.all();
+    }
+
+    bool operator !=(const Vec& b) const {
+        auto abs_diff = (*this - b).abs();
+        auto epsilon_vec = Vec(epsilon<Scalar>);
+        auto ret = Vec(_mm_cmpgt_ps(abs_diff.m, epsilon_vec.m));
+        return ret.any();
+    }
 };
 
 template <>
@@ -297,6 +322,21 @@ struct alignas(16) Vec<float, 3> {
     YAVL_DEFINE_MATH_FUNCS(Vec,, ps, ps)
 
 #undef MATH_SUM_EXPRS
+
+    // Compare ops
+    bool operator ==(const Vec& b) const {
+        auto abs_diff = (*this - b).abs();
+        auto epsilon_vec = Vec(epsilon<Scalar>);
+        auto ret = Vec(_mm_cmple_ps(abs_diff.m, epsilon_vec.m));
+        return ret.all();
+    }
+
+    bool operator !=(const Vec& b) const {
+        auto abs_diff = (*this - b).abs();
+        auto epsilon_vec = Vec(epsilon<Scalar>);
+        auto ret = Vec(_mm_cmpgt_ps(abs_diff.m, epsilon_vec.m));
+        return ret.any();
+    }
 };
 
 #undef MATH_RCP_EXPRS
@@ -315,6 +355,18 @@ struct alignas(16) Vec<float, 3> {
 #define MATH_RSQRT_EXPRS                                                \
     {                                                                   \
         return Vec(rsqrt_pd_impl(m));                                   \
+    }
+
+#undef MATH_ALL_EXPRS
+#define MATH_ALL_EXPRS                                                  \
+    {                                                                   \
+        return _mm_movemask_pd(m) == 0x3;                               \
+    }
+
+#undef MATH_ANY_EXPRS
+#define MATH_ANY_EXPRS                                                  \
+    {                                                                   \
+        return _mm_movemask_pd(m) != 0x0;                               \
     }
 
 template <>
@@ -370,12 +422,39 @@ struct alignas(16) Vec<double, 2> {
     YAVL_DEFINE_MATH_FUNCS(Vec,, pd, pd)
 
 #undef MATH_SUM_EXPRS
+
+    // Compare ops
+    bool operator ==(const Vec& b) const {
+        auto abs_diff = (*this - b).abs();
+        auto epsilon_vec = Vec(epsilon<Scalar>);
+        auto ret = Vec(_mm_cmple_pd(abs_diff.m, epsilon_vec.m));
+        return ret.all();
+    }
+
+    bool operator !=(const Vec& b) const {
+        auto abs_diff = (*this - b).abs();
+        auto epsilon_vec = Vec(epsilon<Scalar>);
+        auto ret = Vec(_mm_cmpgt_pd(abs_diff.m, epsilon_vec.m));
+        return ret.any();
+    }
 };
 
 #undef MATH_ABS_EXPRS
 #define MATH_ABS_EXPRS(VT, BITS, IT1, IT2)                              \
     {                                                                   \
         return Vec(_mm##BITS##_abs_##IT1(m));                           \
+    }
+
+#undef MATH_ALL_EXPRS
+#define MATH_ALL_EXPRS                                                  \
+    {                                                                   \
+        return _mm_movemask_ps(_mm_castsi128_ps(m)) == 0xF;             \
+    }
+
+#undef MATH_ANY_EXPRS
+#define MATH_ANY_EXPRS                                                  \
+    {                                                                   \
+        return _mm_movemask_ps(_mm_castsi128_ps(m)) != 0x0;             \
     }
 
 template <typename I>
@@ -429,6 +508,15 @@ struct alignas(16) Vec<I, 4, enable_if_int32_t<I>> {
     YAVL_DEFINE_MATH_COMMON_FUNCS(Vec,, epi32, epi32)
 
     #undef MATH_SUM_EXPRS
+
+    // Compare ops
+    bool operator ==(const Vec& b) const {
+        return Vec(_mm_cmpeq_epi32(m, b.m)).all();
+    }
+
+    bool operator !=(const Vec& b) const {
+        return !Vec(_mm_cmpeq_epi32(m, b.m)).all();
+    }
 };
 
 template <typename I>
@@ -488,7 +576,28 @@ struct alignas(16) Vec<I, 3, enable_if_int32_t<I>> {
     YAVL_DEFINE_MATH_COMMON_FUNCS(Vec,, epi32, epi32)
 
 #undef MATH_SUM_EXPRS
+
+    // Compare ops
+    bool operator ==(const Vec& b) const {
+        return Vec(_mm_cmpeq_epi32(m, b.m)).all();
+    }
+
+    bool operator !=(const Vec& b) const {
+        return !Vec(_mm_cmpeq_epi32(m, b.m)).all();
+    }
 };
+
+#undef MATH_ALL_EXPRS
+#define MATH_ALL_EXPRS                                                  \
+    {                                                                   \
+        return _mm_movemask_pd(_mm_castsi128_pd(m)) == 0x3;             \
+    }
+
+#undef MATH_ANY_EXPRS
+#define MATH_ANY_EXPRS                                                  \
+    {                                                                   \
+        return _mm_movemask_pd(_mm_castsi128_pd(m)) != 0x0;             \
+    }
 
 template <typename I>
 struct alignas(16) Vec<I, 2, enable_if_int64_t<I>> {
@@ -523,11 +632,21 @@ struct alignas(16) Vec<I, 2, enable_if_int64_t<I>> {
     YAVL_DEFINE_MATH_COMMON_FUNCS(Vec,, epi32, epi32)
 
 #undef MATH_SUM_EXPRS
+
+    bool operator ==(const Vec& b) const {
+        return Vec(_mm_cmpeq_epi64(m, b.m)).all();
+    }
+
+    bool operator !=(const Vec& b) const {
+        return !Vec(_mm_cmpeq_epi64(m, b.m)).all();
+    }
 };
 
 #undef MATH_ABS_EXPRS
 #undef MATH_RCP_EXPRS
 #undef MATH_SQRT_EXPRS
 #undef MATH_RSQRT_EXPRS
+#undef MATH_ALL_EXPRS
+#undef MATH_ANY_EXPRS
 
 }

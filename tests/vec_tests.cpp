@@ -66,6 +66,7 @@ TEMPLATE_PRODUCT_TEST_CASE("Vec tests", "[vec]", (Vec2, Vec3, Vec4), (float, dou
     TestType vec1{1};
     TestType vec2{2};
     TestType vec3, vec4;
+    TestType vec5{1};
     if constexpr (vec0.Size == 2) {
         vec3 = {1, 2};
         vec4 = {5, 6};
@@ -184,6 +185,11 @@ TEMPLATE_PRODUCT_TEST_CASE("Vec tests", "[vec]", (Vec2, Vec3, Vec4), (float, dou
                 REQUIRE(rsqrt.y == Approx(0.7071067812));
             }
         }
+    }
+
+    SECTION("Compare tests") {
+        REQUIRE(vec1 != vec2)
+        REQUIRE(vec1 == vec5)
     }
 
     SECTION("Vectorization tests") {

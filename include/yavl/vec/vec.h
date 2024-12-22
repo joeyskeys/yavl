@@ -161,6 +161,34 @@ inline Vec base_shuffle_impl(const Vec& v, Ts ...args) {
         return *this * *this;                                           \
     }
 
+#define MATH_ALL_FUNC                                                   \
+    inline bool all() const {                                           \
+        MATH_ALL_EXPRS                                                  \
+    }
+
+#define MATH_ALL_EXPRS                                                  \
+    {                                                                   \
+        bool ret = true;                                                \
+        static_for<Size>([&](const auto i) {                            \
+            ret = ret && arr[i];                                        \
+        });                                                             \
+        return ret;                                                     \
+    }
+
+#define MATH_ANY_FUNC                                                   \
+    inline bool any() const {                                           \
+        MATH_ANY_EXPRS                                                  \
+    }
+
+#define MATH_ANY_EXPRS                                                  \
+    {                                                                   \
+        bool ret = false;                                               \
+        static_for<Size>([&](const auto i) {                            \
+            ret = ret || arr[i];                                        \
+        });                                                             \
+        return ret;                                                     \
+    }
+
 #define MATH_RCP_FUNC(VT)                                               \
     inline auto rcp() const {                                           \
         MATH_RCP_EXPRS(VT)                                              \
@@ -244,7 +272,9 @@ inline Vec base_shuffle_impl(const Vec& v, Ts ...args) {
     MATH_LENGTH_FUNC                                                    \
     MATH_ABS_FUNC(VT, BITS, IT1, IT2)                                   \
     MATH_SUM_FUNC                                                       \
-    MATH_SQUARE_FUNC
+    MATH_SQUARE_FUNC                                                    \
+    MATH_ALL_FUNC                                                       \
+    MATH_ANY_FUNC
 
 #define YAVL_DEFINE_MATH_FP_FUNCS(VT, BITS, IT)                         \
     MATH_NORMALIZE_FUNC(VT)                                             \
@@ -320,6 +350,27 @@ struct VT {                                                             \
     YAVL_DEFINE_GEO_FUNCS(VT)                                           \
     /* Math */                                                          \
     YAVL_DEFINE_MATH_FUNCS(VT, , ,)                                     \
+    /* Compare */                                                       \
+    bool operator ==(const VT& b) const {                               \
+        bool ret = true;                                                \
+        static_for<Size>([&](const auto i) {                            \
+            if constexpr (std::is_floating_point_v<T>)                  \
+                ret = ret && std::abs(arr[i] - b.arr[i]) < epsilon<Scalar>; \
+            else                                                        \
+                ret = ret && arr[i] == b.arr[i];                        \
+        });                                                             \
+        return ret;                                                     \
+    }                                                                   \
+    bool operator !=(const VT& b) const {                               \
+        bool ret = false;                                               \
+        static_for<Size>([&](const auto i) {                            \
+            if constexpr (std::is_floating_point_v<T>)                  \
+                ret = ret || std::abs(arr[i] - b.arr[i]) > epsilon<Scalar>; \
+            else                                                        \
+                ret = ret || arr[i] != b.arr[i];                        \
+        });                                                             \
+        return ret;                                                     \
+    }                                                                   \
 };
 
 YAVL_DEFINE_BASIC_VEC(Vec)
@@ -339,6 +390,8 @@ YAVL_DEFINE_BASIC_VEC(Vec)
 #undef MATH_ABS_EXPRS
 #undef MATH_SUM_EXPRS
 #undef MATH_SQUARE_EXPRS
+#undef MATH_ALL_EXPRS
+#undef MATH_ANY_EXPRS
 #undef MATH_RCP_EXPRS
 #undef MATH_SQRT_EXPRS
 #undef MATH_RSQRT_EXPRS

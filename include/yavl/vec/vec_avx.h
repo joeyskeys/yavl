@@ -106,6 +106,16 @@ static inline __m256d rsqrt_pd_impl(const __m256d m) {
         return Vec(rsqrt_pd_impl<Size>(m));                             \
     }
 
+#define MATH_ALL_EXPRS                                                  \
+    {                                                                   \
+        return _mm256_movemask_pd(m) == 0xF;                            \
+    }
+
+#define MATH_ALL_EXPRS                                                  \
+    {                                                                   \
+        return _mm256_movemask_pd(m) != 0x0;                            \
+    }
+
 template <>
 struct alignas(32) Vec<double, 4> {
     YAVL_VEC_ALIAS_VECTORIZED(double, 4, 4)
